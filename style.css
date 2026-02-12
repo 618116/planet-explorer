@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #030308;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh;
+  font-family: 'JetBrains Mono', monospace;
+  color: #c8d6e5; overflow: hidden;
+  user-select: none;
+}
+#header {
+  display: flex; align-items: center; gap: 20px;
+  margin-bottom: 8px; width: 900px;
+}
+h1 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px; color: #ff6b35;
+  text-shadow: 0 0 18px rgba(255,107,53,0.4);
+  letter-spacing: 2px;
+}
+#hud {
+  display: flex; gap: 16px; font-size: 11px; color: #8395a7;
+}
+#hud span { display: flex; align-items: center; gap: 5px; }
+#hud .val { color: #feca57; font-weight: 700; }
+#game-container {
+  position: relative;
+  border: 2px solid #111128; border-radius: 6px;
+  box-shadow: 0 0 50px rgba(60,40,140,0.12);
+  overflow: hidden; cursor: crosshair;
+}
+canvas { display: block; }
+#controls {
+  margin-top: 8px; width: 900px;
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: #576574;
+}
+#controls kbd {
+  display: inline-block; background: #16213e;
+  border: 1px solid #2c3e6b; border-radius: 3px;
+  padding: 1px 6px; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: #8395a7; margin: 0 1px;
+}
+#power-bar-container {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  width: 160px; height: 6px; background: rgba(0,0,0,0.7);
+  border: 1px solid #333; border-radius: 4px; overflow: hidden;
+  z-index: 10; display: none;
+}
+#power-bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c);
+}
+#message {
+  position: absolute; top: 40%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px; color: #feca57;
+  text-shadow: 0 0 18px rgba(254,202,87,0.6);
+  z-index: 20; pointer-events: none; opacity: 0;
+  transition: opacity 0.3s;
+}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planet Explorer – Destructible Terrain</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="header">
+  <h1>PLANET EXPLORER</h1>
+  <div id="hud">
+    <span>HP: <b class="val" id="hpLabel">100</b></span>
+    <span>Fuel: <b class="val" id="fuelLabel">100</b></span>
+    <span>Shots: <b class="val" id="shotsLabel">0</b></span>
+    <span>Zoom: <b class="val" id="zoomLabel">1.0x</b></span>
+    <span>Terrain: <b class="val" id="terrainLabel">100%</b></span>
+    <span id="godToggle" style="cursor:pointer;padding:2px 8px;border:1px solid #333;border-radius:3px;color:#576574" title="Toggle God Mode (G)">GOD: OFF</span>
+  </div>
+  <div id="timer" style="position:absolute;left:50%;transform:translateX(-50%);top:4px;font-size:24px;font-weight:bold;font-family:monospace;color:#48dbfb">1:00</div>
+</div>
+
+<div id="game-container">
+  <canvas id="canvas"></canvas>
+  <div id="power-bar-container"><div id="power-bar"></div></div>
+  <div id="message"></div>
+</div>
+
+<div id="controls">
+  <span><kbd>A</kbd><kbd>D</kbd> Walk &nbsp; <kbd>W</kbd> Jetpack</span>
+  <span>Mouse aim &nbsp; <kbd>Click</kbd> hold charge, release fire &nbsp; <kbd>Scroll</kbd> Zoom &nbsp; <kbd>G</kbd> God mode &nbsp; <kbd>R</kbd> Reset</span>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
