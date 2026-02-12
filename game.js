@@ -1115,7 +1115,7 @@ function drawMinimap() {
   ctx.globalAlpha = 1;
   ctx.restore();
 }
-
+//test
 // ─── Start ────────────────────────────────────────────────────
 initGame();
 gameLoop();
