@@ -762,6 +762,8 @@ function spawnEnemy() {
 let player, projectiles=[], particles=[], enemies=[];
 let keys={}, mouseX=VW/2, mouseY=VH/2;
 let charging=false, power=0;
+let gamepadIndex=null, gpPrevTrigger=false;
+let gpLeft=false, gpRight=false, gpUp=false, gpAimActive=false;
 let shakeAmount=0;
 let aimAngle=0;
 let godMode=false;
@@ -873,6 +875,72 @@ canvas.addEventListener('wheel',e=>{
 // Prevent context menu
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
+window.addEventListener('gamepadconnected',e=>{
+  gamepadIndex=e.gamepad.index;
+  showMessage('Gamepad connected',1500);
+});
+window.addEventListener('gamepaddisconnected',e=>{
+  if(e.gamepad.index===gamepadIndex){
+    gamepadIndex=null;
+    gpLeft=false; gpRight=false; gpUp=false; gpAimActive=false;
+  }
+});
+
+// ─── Gamepad ──────────────────────────────────────────────────
+function pollGamepad(){
+  const gamepads=navigator.getGamepads?navigator.getGamepads():[];
+  let gp=gamepadIndex!==null?gamepads[gamepadIndex]:null;
+  if(!gp){
+    for(let i=0;i<gamepads.length;i++){
+      if(gamepads[i]){gamepadIndex=i;gp=gamepads[i];break;}
+    }
+  }
+  if(!gp) return;
+
+  const DEAD=0.15;
+  const {buttons,axes}=gp;
+
+  // Left stick X → walk
+  const lx=axes[0]??0;
+  gpLeft=lx<-DEAD;
+  gpRight=lx>DEAD;
+
+  // Left trigger (button 6, or axis 4 on some controllers) → jetpack
+  gpUp=(buttons[6]?.pressed)||(axes[4]??0)>0.1;
+
+  // Right stick → aim (world angle, accounting for camera rotation)
+  const rx=axes[2]??0, ry=axes[3]??0;
+  if(Math.sqrt(rx*rx+ry*ry)>DEAD){
+    gpAimActive=true;
+    aimAngle=Math.atan2(ry,rx)-camRot;
+  } else {
+    gpAimActive=false;
+  }
+
+  // Right trigger (button 7) → charge & fire
+  const rtPressed=buttons[7]?.pressed??false;
+  if(rtPressed&&!gpPrevTrigger&&player&&player.hp>0&&!gameOver){
+    charging=true; power=0;
+    powerBarContainer.style.display='block';
+  } else if(!rtPressed&&gpPrevTrigger&&charging){
+    charging=false;
+    if(power>1) fire();
+    powerBarContainer.style.display='none';
+    power=0;
+  }
+  gpPrevTrigger=rtPressed;
+
+  // LB/RB → zoom
+  if(buttons[5]?.pressed) camZoom=Math.min(MAX_ZOOM,camZoom+0.04);
+  if(buttons[4]?.pressed) camZoom=Math.max(MIN_ZOOM,camZoom-0.04);
+
+  // Start → reset, Back/Select → god mode (edge-triggered)
+  if(buttons[9]?.pressed&&!gp._prevStart) initGame();
+  if(buttons[8]?.pressed&&!gp._prevBack)  toggleGodMode();
+  gp._prevStart=buttons[9]?.pressed??false;
+  gp._prevBack =buttons[8]?.pressed??false;
+}
+
 // ─── Init ─────────────────────────────────────────────────────
 function initGame() {
   generateTerrain();
@@ -924,25 +992,28 @@ function gameLoop() {
     }
   }
 
-  // Aim angle from mouse
-  const worldMouse = screenToWorld(mouseX, mouseY);
-  aimAngle = Math.atan2(worldMouse.y - player.y, worldMouse.x - player.x);
+  // Aim angle — mouse updates unless gamepad right stick is active
+  pollGamepad();
+  if(!gpAimActive){
+    const worldMouse = screenToWorld(mouseX, mouseY);
+    aimAngle = Math.atan2(worldMouse.y - player.y, worldMouse.x - player.x);
+  }
 
   // Input
   if(player.hp > 0 && !gameOver) {
     const θ=player.surfAngle;
     // Walk (works on ground and in air with reduced force)
     const airMul = player.onGround ? 1.0 : 0.4;
-    if(keys['a']){
+    if(keys['a']||gpLeft){
       const ta=θ-Math.PI/2;
       player.vx+=Math.cos(ta)*WALK_FORCE*airMul; player.vy+=Math.sin(ta)*WALK_FORCE*airMul;
     }
-    if(keys['d']){
+    if(keys['d']||gpRight){
       const ta=θ+Math.PI/2;
       player.vx+=Math.cos(ta)*WALK_FORCE*airMul; player.vy+=Math.sin(ta)*WALK_FORCE*airMul;
     }
     // Jetpack thrust (outward from planet center, weakens with altitude)
-    if(keys['w'] && player.fuel > 0){
+    if((keys['w']||gpUp) && player.fuel > 0){
       const outX=Math.cos(θ), outY=Math.sin(θ);
       const altitude = dist(player.x, player.y, CX, CY);
       let thrustMul = 1.0;
