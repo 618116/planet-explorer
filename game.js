@@ -56,9 +56,15 @@ function fitToScreen() {
   const scaleX = window.innerWidth  / VW;
   const scaleY = window.innerHeight / VH;
   const scale  = Math.min(scaleX, scaleY, 1);
-  document.body.style.transform       = `scale(${scale})`;
-  document.body.style.transformOrigin = 'top center';
-  document.body.style.height          = `${window.innerHeight / scale}px`;
+  const scaledW = VW * scale;
+  const scaledH = VH * scale;
+  const left = (window.innerWidth  - scaledW) / 2;
+  const top  = (window.innerHeight - scaledH) / 2;
+  container.style.position        = 'fixed';
+  container.style.left            = left + 'px';
+  container.style.top             = top  + 'px';
+  container.style.transformOrigin = '0 0';
+  container.style.transform       = `scale(${scale})`;
 }
 fitToScreen();
 window.addEventListener('resize',            fitToScreen);
@@ -859,7 +865,8 @@ window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 
 canvas.addEventListener('mousemove',e=>{
   const r=canvas.getBoundingClientRect();
-  mouseX=e.clientX-r.left; mouseY=e.clientY-r.top;
+  mouseX=(e.clientX-r.left)*(VW/r.width);
+  mouseY=(e.clientY-r.top) *(VH/r.height);
 });
 
 canvas.addEventListener('mousedown',e=>{
