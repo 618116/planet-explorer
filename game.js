@@ -52,6 +52,18 @@ const canvas = document.getElementById('canvas');
 canvas.width = VW; canvas.height = VH;
 const ctx = canvas.getContext('2d');
 
+function fitToScreen() {
+  const scaleX = window.innerWidth  / VW;
+  const scaleY = window.innerHeight / VH;
+  const scale  = Math.min(scaleX, scaleY, 1);
+  document.body.style.transform       = `scale(${scale})`;
+  document.body.style.transformOrigin = 'top center';
+  document.body.style.height          = `${window.innerHeight / scale}px`;
+}
+fitToScreen();
+window.addEventListener('resize',            fitToScreen);
+window.addEventListener('orientationchange', fitToScreen);
+
 // Off-screen canvases for terrain and background
 const bgOff = document.createElement('canvas');
 bgOff.width = WORLD_W; bgOff.height = WORLD_H;

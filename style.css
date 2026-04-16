@@ -4,7 +4,7 @@ body {
   background: #030308;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: 100vh;
+  height: 100vh;
   font-family: 'JetBrains Mono', monospace;
   color: #c8d6e5; overflow: hidden;
   user-select: none;
