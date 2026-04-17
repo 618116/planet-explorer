@@ -10,19 +10,25 @@ canvas.width = VW;
 canvas.height = VH;
 export const ctx = canvas.getContext('2d');
 
+const headerEl = document.getElementById('header');
+const controlsEl = document.getElementById('controls');
+
 function fitToScreen() {
   const scaleX = window.innerWidth / VW;
-  const scaleY = window.innerHeight / VH;
+  // Reserve space for body padding-top (10px) and header (height + 8px margin-bottom)
+  const headerH = headerEl.offsetHeight + 8;
+  const scaleY = (window.innerHeight - 10 - headerH) / VH;
   const scale = Math.min(scaleX, scaleY, 1);
-  const scaledW = VW * scale;
-  const scaledH = VH * scale;
-  const left = (window.innerWidth - scaledW) / 2;
-  const top = (window.innerHeight - scaledH) / 2;
-  container.style.position = 'fixed';
-  container.style.left = left + 'px';
-  container.style.top = top + 'px';
-  container.style.transformOrigin = '0 0';
+
+  container.style.transformOrigin = 'top center';
   container.style.transform = `scale(${scale})`;
+
+  // Snap controls directly below the visually-scaled canvas
+  controlsEl.style.marginTop = (VH * (scale - 1) + 8) + 'px';
+
+  // Hide controls if remaining space below the canvas is too small
+  const remainingH = window.innerHeight - 10 - headerH - VH * scale;
+  controlsEl.style.visibility = remainingH >= controlsEl.offsetHeight + 8 ? 'visible' : 'hidden';
 }
 fitToScreen();
 window.addEventListener('resize', fitToScreen);
