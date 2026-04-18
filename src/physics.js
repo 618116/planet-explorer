@@ -29,13 +29,16 @@ export function resolveSurfaceCollision(obj) {
   const outX = Math.cos(θ), outY = Math.sin(θ);
 
   if (isSolid(obj.x, obj.y)) {
+    const spd = Math.hypot(obj.vx, obj.vy);
+    const escX = spd > 0.5 ? -obj.vx / spd : outX;
+    const escY = spd > 0.5 ? -obj.vy / spd : outY;
     for (let i = 0; i < 30; i++) {
-      obj.x += outX; obj.y += outY;
+      obj.x += escX; obj.y += escY;
       if (!isSolid(obj.x, obj.y)) break;
     }
     obj.onGround = true;
-    const inDot = obj.vx * (-outX) + obj.vy * (-outY);
-    if (inDot > 0) { obj.vx += outX * inDot; obj.vy += outY * inDot; }
+    const inDot = obj.vx * (-escX) + obj.vy * (-escY);
+    if (inDot > 0) { obj.vx += escX * inDot; obj.vy += escY * inDot; }
   }
   if (!obj.onGround && isSolid(obj.x - outX * 2, obj.y - outY * 2)) {
     obj.onGround = true;
@@ -51,10 +54,12 @@ export function resolveBodyCollision(obj, halfW, bodyLen, step, outX, outY, onHi
   const tx = -outY, ty = outX;
   let t = 0;
   do {
-    const bx = obj.x + outX * t, by = obj.y + outY * t;
     for (let side = -1; side <= 1; side += 2) {
-      if (isSolid(bx + tx * halfW * side, by + ty * halfW * side)) {
-        obj.x -= tx * side * 0.5; obj.y -= ty * side * 0.5;
+      if (isSolid(obj.x + outX * t + tx * halfW * side, obj.y + outY * t + ty * halfW * side)) {
+        for (let push = 0; push < 8; push++) {
+          obj.x -= tx * side * 0.5; obj.y -= ty * side * 0.5;
+          if (!isSolid(obj.x + outX * t + tx * halfW * side, obj.y + outY * t + ty * halfW * side)) break;
+        }
         if (onHit) {
           onHit(obj, side, tx, ty);
         } else {

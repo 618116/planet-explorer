@@ -11,6 +11,7 @@ import {
   powerBarContainer, powerBar, timerEl, godToggleEl, showMessage,
 } from './dom.js';
 import { dist } from './math.js';
+import { resolveSurfaceCollision } from './physics.js';
 import { state } from './state.js';
 import { camera, updateCamera, applyCam, screenToWorld } from './camera.js';
 import {
@@ -39,6 +40,7 @@ function fire() {
   p.shots++;
   p.vx -= Math.cos(a) * state.power * 0.08;
   p.vy -= Math.sin(a) * state.power * 0.08;
+  resolveSurfaceCollision(p);
 }
 
 function toggleGodMode() {

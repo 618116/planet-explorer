@@ -2,7 +2,7 @@
 import {
   PLAYER_H, PLAYER_W, MAX_FUEL, FUEL_REGEN,
 } from '../config.js';
-import { gravityAt, getSurfaceRadius } from '../terrain/heightmap.js';
+import { gravityAt, getSurfaceRadius, isSolid } from '../terrain/heightmap.js';
 import {
   surfaceAngle, placeAtAngle, resolveSurfaceCollision, resolveBodyCollision,
 } from '../physics.js';
@@ -28,12 +28,38 @@ export class Player {
     this.vx += gx; this.vy += gy;
 
     const speed = Math.hypot(this.vx, this.vy);
-    const sub = Math.max(1, Math.ceil(speed / 2));
-    const dvx = this.vx / sub, dvy = this.vy / sub;
+    const sub = Math.max(1, Math.ceil(speed));
+    const halfW = PLAYER_W / 2;
+    const bodyHits = (px, py, oX, oY, tX, tY) => {
+      if (isSolid(px, py)) return true;
+      for (let t = 0; t <= PLAYER_H; t += 3) {
+        for (let s = -1; s <= 1; s += 2) {
+          if (isSolid(px + oX * t + tX * halfW * s, py + oY * t + tY * halfW * s)) return true;
+        }
+      }
+      return false;
+    };
     for (let i = 0; i < sub; i++) {
-      this.x += dvx; this.y += dvy;
+      const dvx = this.vx / sub, dvy = this.vy / sub;
+      const nx = this.x + dvx, ny = this.y + dvy;
+      const θ = surfaceAngle(nx, ny);
+      const oX = Math.cos(θ), oY = Math.sin(θ);
+      const tX = -oY, tY = oX;
+      if (!bodyHits(nx, ny, oX, oY, tX, tY)) {
+        this.x = nx; this.y = ny;
+      } else {
+        const radDot = this.vx * oX + this.vy * oY;
+        const tvx = this.vx - oX * radDot, tvy = this.vy - oY * radDot;
+        const snx = this.x + tvx / sub, sny = this.y + tvy / sub;
+        if (!bodyHits(snx, sny, oX, oY, tX, tY)) {
+          this.x = snx; this.y = sny;
+          this.vx = tvx; this.vy = tvy;
+        } else {
+          this.vx = 0; this.vy = 0;
+        }
+      }
       const { outX, outY } = resolveSurfaceCollision(this);
-      resolveBodyCollision(this, PLAYER_W / 2, PLAYER_H, 3, outX, outY);
+      resolveBodyCollision(this, halfW, PLAYER_H, 3, outX, outY);
     }
 
     if (this.onGround) { this.vx *= 0.82; this.vy *= 0.82; }
