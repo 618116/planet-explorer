@@ -1,4 +1,8 @@
 // Game constants.
+export const PHYSICS_HZ = 60;
+export const DT_MS = 1000 / PHYSICS_HZ;
+export const MAX_PHYSICS_STEPS = 5;
+
 export const VW = 900, VH = 640;
 export const WORLD_W = 1600, WORLD_H = 1600;
 export const CX = WORLD_W / 2, CY = WORLD_H / 2;

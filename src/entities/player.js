@@ -11,22 +11,30 @@ export class Player {
   constructor(angle) {
     this.hp = 100;
     this.x = 0; this.y = 0;
+    this.prevX = 0; this.prevY = 0;
     this.vx = 0; this.vy = 0;
     this.onGround = false;
     this.shots = 0;
     this.fuel = MAX_FUEL;
     this.thrusting = false;
     placeAtAngle(this, angle, getSurfaceRadius(angle));
+    this.prevX = this.x; this.prevY = this.y;
   }
   get surfAngle() { return surfaceAngle(this.x, this.y); }
 
   update() {
+    this.prevX = this.x; this.prevY = this.y;
     const { gx, gy } = gravityAt(this.x, this.y);
     this.vx += gx; this.vy += gy;
-    this.x += this.vx; this.y += this.vy;
 
-    const { outX, outY } = resolveSurfaceCollision(this);
-    resolveBodyCollision(this, PLAYER_W / 2, PLAYER_H, 3, outX, outY);
+    const speed = Math.hypot(this.vx, this.vy);
+    const sub = Math.max(1, Math.ceil(speed / 2));
+    const dvx = this.vx / sub, dvy = this.vy / sub;
+    for (let i = 0; i < sub; i++) {
+      this.x += dvx; this.y += dvy;
+      const { outX, outY } = resolveSurfaceCollision(this);
+      resolveBodyCollision(this, PLAYER_W / 2, PLAYER_H, 3, outX, outY);
+    }
 
     if (this.onGround) { this.vx *= 0.82; this.vy *= 0.82; }
     else { this.vx *= 0.995; this.vy *= 0.995; }
@@ -35,10 +43,12 @@ export class Player {
     this.thrusting = false;
   }
 
-  draw(ctx, aimWorldAngle) {
-    const θ = this.surfAngle;
+  draw(ctx, aimWorldAngle, alpha = 1) {
+    const ix = this.prevX + (this.x - this.prevX) * alpha;
+    const iy = this.prevY + (this.y - this.prevY) * alpha;
+    const θ = surfaceAngle(ix, iy);
     ctx.save();
-    ctx.translate(this.x, this.y);
+    ctx.translate(ix, iy);
     ctx.rotate(θ + Math.PI / 2);
 
     if (this.thrusting) {
@@ -82,11 +92,11 @@ export class Player {
     ctx.restore();
 
     const aimLen = 40;
-    const ax = this.x + Math.cos(aimWorldAngle) * aimLen;
-    const ay = this.y + Math.sin(aimWorldAngle) * aimLen;
+    const ax = ix + Math.cos(aimWorldAngle) * aimLen;
+    const ay = iy + Math.sin(aimWorldAngle) * aimLen;
     ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.2;
     ctx.setLineDash([3, 3]);
-    ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(ax, ay); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(ax, ay); ctx.stroke();
     ctx.setLineDash([]);
     ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(ax, ay, 4, 0, Math.PI * 2); ctx.stroke();

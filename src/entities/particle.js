@@ -4,7 +4,7 @@ import { gravityAt } from '../terrain/heightmap.js';
 
 export class Particle {
   constructor(x, y, type) {
-    this.x = x; this.y = y; this.type = type;
+    this.x = x; this.y = y; this.prevX = x; this.prevY = y; this.type = type;
     const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 5;
     this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
     this.life = 1;
@@ -38,6 +38,7 @@ export class Particle {
     }
   }
   update() {
+    this.prevX = this.x; this.prevY = this.y;
     if (this.type === 'dirt' || this.type === 'thrust') {
       const { gx, gy } = gravityAt(this.x, this.y);
       this.vx += gx * 0.5; this.vy += gy * 0.5;
@@ -50,11 +51,13 @@ export class Particle {
     this.vx *= 0.98; this.vy *= 0.98;
     this.life -= this.decay;
   }
-  draw(ctx) {
+  draw(ctx, alpha = 1) {
+    const ix = this.prevX + (this.x - this.prevX) * alpha;
+    const iy = this.prevY + (this.y - this.prevY) * alpha;
     ctx.globalAlpha = Math.max(0, this.life);
     ctx.fillStyle = `rgb(${this.r},${this.g},${this.b})`;
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+    ctx.arc(ix, iy, this.size * this.life, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   }

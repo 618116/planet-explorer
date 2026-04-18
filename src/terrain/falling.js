@@ -43,11 +43,13 @@ export class FallingChunk {
     }
     this.cmx = cmx / cnt; this.cmy = cmy / cnt;
     this.offsetX = 0; this.offsetY = 0;
+    this.prevOffsetX = 0; this.prevOffsetY = 0;
     this.vx = 0; this.vy = 0;
     this.settled = false;
   }
   update() {
     if (this.settled) return;
+    this.prevOffsetX = this.offsetX; this.prevOffsetY = this.offsetY;
     const wx = this.cmx + this.offsetX, wy = this.cmy + this.offsetY;
     const dx = CX - wx, dy = CY - wy, d = Math.sqrt(dx * dx + dy * dy);
     if (d > 1) { this.vx += (dx / d) * 0.35; this.vy += (dy / d) * 0.35; }
@@ -97,9 +99,11 @@ export class FallingChunk {
     blitTerrain();
     floatState.pending = true;
   }
-  draw(ctx) {
+  draw(ctx, alpha = 1) {
     if (this.settled) return;
-    const bx = Math.round(this.offsetX), by = Math.round(this.offsetY);
+    const ox = this.prevOffsetX + (this.offsetX - this.prevOffsetX) * alpha;
+    const oy = this.prevOffsetY + (this.offsetY - this.prevOffsetY) * alpha;
+    const bx = Math.round(ox), by = Math.round(oy);
     for (let ly = 0; ly < this.h; ly++) for (let lx = 0; lx < this.w; lx++) {
       const li = ly * this.w + lx; if (!this.grid[li]) continue;
       ctx.fillStyle = `rgb(${this.colR[li]},${this.colG[li]},${this.colB[li]})`;

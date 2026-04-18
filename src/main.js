@@ -1,9 +1,10 @@
-// Entry: initGame, gameLoop, render sequence, HUD, fire, god-mode toggle.
+// Entry: initGame, fixed-timestep loop, HUD, fire, god-mode toggle.
 import {
   VW, VH, CX, CY, GAME_TIME, WIN_TERRAIN_PCT, MAX_POWER, MAX_FUEL,
   WALK_FORCE, THRUST_FORCE, FUEL_USE,
   THRUST_WEAKEN_START, THRUST_WEAKEN_END,
   ENEMY_INITIAL_COUNT, ENEMY_SPAWN_INTERVAL,
+  DT_MS, MAX_PHYSICS_STEPS,
 } from './config.js';
 import {
   ctx, hpLabel, fuelLabel, shotsLabel, zoomLabel, terrainLabel,
@@ -25,6 +26,9 @@ import { Particle } from './entities/particle.js';
 import { spawnEnemy } from './entities/enemy.js';
 import { installInput, pollInput } from './input.js';
 import { drawMinimap } from './minimap.js';
+
+let accumulator = 0;
+let lastFrameStart = performance.now();
 
 function fire() {
   const p = state.player;
@@ -69,19 +73,19 @@ function initGame() {
   timerEl.textContent = Math.floor(GAME_TIME / 60) + ':' + ((GAME_TIME % 60) < 10 ? '0' : '') + (GAME_TIME % 60);
   timerEl.style.color = '#48dbfb';
   showMessage('Destroy terrain below ' + WIN_TERRAIN_PCT + '%!', 2000);
+  accumulator = 0;
+  lastFrameStart = performance.now();
 }
 
-function gameLoop() {
-  requestAnimationFrame(gameLoop);
-  const now = performance.now();
-  const fps = 1000 / (now - state.lastFrameTime);
-  state.lastFrameTime = now;
-  state.fpsSmooth += (fps - state.fpsSmooth) * 0.05;
+// Runs at a fixed 60Hz rate regardless of render frame rate.
+// consumeEdges is true only for the first tick of a frame so
+// just-pressed/just-released events fire exactly once.
+function fixedUpdate(input, consumeEdges) {
   const player = state.player;
   if (!player) return;
 
   if (!state.gameOver) {
-    const elapsed = (now - state.gameStartTime) / 1000;
+    const elapsed = (performance.now() - state.gameStartTime) / 1000;
     const remaining = Math.max(0, GAME_TIME - elapsed);
     const mins = Math.floor(remaining / 60);
     const secs = Math.floor(remaining % 60);
@@ -102,28 +106,20 @@ function gameLoop() {
     }
   }
 
-  const input = pollInput(camera.rot);
-  state.input = input;
-
-  if (input.aim.active) {
-    state.aimAngle = input.aim.angle;
-  } else {
-    const w = screenToWorld(input.aim.mouseX, input.aim.mouseY);
-    state.aimAngle = Math.atan2(w.y - player.y, w.x - player.x);
-  }
-
   const canAct = player.hp > 0 && !state.gameOver;
 
-  if (input.fire.justPressed && canAct) {
-    state.charging = true;
-    state.power = 0;
-    powerBarContainer.style.display = 'block';
-  }
-  if (input.fire.justReleased && state.charging) {
-    state.charging = false;
-    if (state.power > 1) fire();
-    powerBarContainer.style.display = 'none';
-    state.power = 0;
+  if (consumeEdges) {
+    if (input.fire.justPressed && canAct) {
+      state.charging = true;
+      state.power = 0;
+      powerBarContainer.style.display = 'block';
+    }
+    if (input.fire.justReleased && state.charging) {
+      state.charging = false;
+      if (state.power > 1) fire();
+      powerBarContainer.style.display = 'none';
+      state.power = 0;
+    }
   }
 
   if (canAct) {
@@ -199,6 +195,12 @@ function gameLoop() {
 
   state.shakeAmount *= 0.9;
   if (state.shakeAmount < 0.1) state.shakeAmount = 0;
+}
+
+function render(alpha) {
+  const player = state.player;
+  if (!player) return;
+
   const sx = (Math.random() - 0.5) * state.shakeAmount;
   const sy = (Math.random() - 0.5) * state.shakeAmount;
 
@@ -220,11 +222,11 @@ function gameLoop() {
   ctx.drawImage(bgOff, 0, 0);
   ctx.drawImage(terrOff, 0, 0);
 
-  for (const c of fallingChunks) c.draw(ctx);
-  for (const p of state.projectiles) if (p.alive) p.draw(ctx);
-  for (const p of state.particles) p.draw(ctx);
-  for (const e of state.enemies) e.draw(ctx);
-  if (player.hp > 0) player.draw(ctx, state.aimAngle);
+  for (const c of fallingChunks) c.draw(ctx, alpha);
+  for (const p of state.projectiles) if (p.alive) p.draw(ctx, alpha);
+  for (const p of state.particles) p.draw(ctx, alpha);
+  for (const e of state.enemies) e.draw(ctx, alpha);
+  if (player.hp > 0) player.draw(ctx, state.aimAngle, alpha);
 
   if (player.hp <= 0) {
     ctx.fillStyle = 'rgba(255,50,50,0.3)';
@@ -238,6 +240,45 @@ function gameLoop() {
   ctx.font = '12px monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.fillText(Math.round(state.fpsSmooth) + ' FPS', 10, VH - 10);
+}
+
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+  const now = performance.now();
+  let frameTime = now - lastFrameStart;
+  if (frameTime > 250) frameTime = 250;
+  lastFrameStart = now;
+
+  const fps = 1000 / Math.max(1, frameTime);
+  state.fpsSmooth += (fps - state.fpsSmooth) * 0.05;
+  state.lastFrameTime = now;
+
+  const player = state.player;
+  if (!player) return;
+
+  const input = pollInput(camera.rot);
+  state.input = input;
+
+  if (input.aim.active) {
+    state.aimAngle = input.aim.angle;
+  } else {
+    const w = screenToWorld(input.aim.mouseX, input.aim.mouseY);
+    state.aimAngle = Math.atan2(w.y - player.y, w.x - player.x);
+  }
+
+  accumulator += frameTime;
+  let steps = 0;
+  let consumeEdges = true;
+  while (accumulator >= DT_MS && steps < MAX_PHYSICS_STEPS) {
+    fixedUpdate(input, consumeEdges);
+    consumeEdges = false;
+    accumulator -= DT_MS;
+    steps++;
+  }
+  if (steps === MAX_PHYSICS_STEPS) accumulator = 0;
+
+  const alpha = Math.min(1, accumulator / DT_MS);
+  render(alpha);
 }
 
 installInput({ onReset: initGame, onGodToggle: toggleGodMode });

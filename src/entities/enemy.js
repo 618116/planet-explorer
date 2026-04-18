@@ -26,16 +26,19 @@ export class Enemy {
     this.depositTLen = isLarge ? LARGE_ENEMY_DEPOSIT_T : 3;
     this.depositHLen = isLarge ? LARGE_ENEMY_DEPOSIT_H : 1;
     this.x = 0; this.y = 0;
+    this.prevX = 0; this.prevY = 0;
     this.vx = 0; this.vy = 0;
     this.onGround = false;
     this.dir = Math.random() < 0.5 ? -1 : 1;
     this.nextDirChange = rollDirChangeAt(Date.now());
     this.depositTimer = 0;
     placeAtAngle(this, angle, getSurfaceRadius(angle));
+    this.prevX = this.x; this.prevY = this.y;
   }
   get surfAngle() { return surfaceAngle(this.x, this.y); }
 
   update() {
+    this.prevX = this.x; this.prevY = this.y;
     const { gx, gy } = gravityAt(this.x, this.y);
     this.vx += gx; this.vy += gy;
 
@@ -46,13 +49,17 @@ export class Enemy {
       this.vy += Math.sin(ta) * this.walkSpeed;
     }
 
-    this.x += this.vx; this.y += this.vy;
-
-    const { outX, outY } = resolveSurfaceCollision(this);
-    resolveBodyCollision(this, this.sizeW / 2, 0, 1, outX, outY, (obj) => {
-      obj.dir *= -1;
-      obj.nextDirChange = rollDirChangeAt(Date.now());
-    });
+    const speed = Math.hypot(this.vx, this.vy);
+    const sub = Math.max(1, Math.ceil(speed / 2));
+    const dvx = this.vx / sub, dvy = this.vy / sub;
+    for (let i = 0; i < sub; i++) {
+      this.x += dvx; this.y += dvy;
+      const { outX, outY } = resolveSurfaceCollision(this);
+      resolveBodyCollision(this, this.sizeW / 2, 0, 1, outX, outY, (obj) => {
+        obj.dir *= -1;
+        obj.nextDirChange = rollDirChangeAt(Date.now());
+      });
+    }
 
     if (this.onGround) { this.vx *= 0.82; this.vy *= 0.82; }
     else { this.vx *= 0.995; this.vy *= 0.995; }
@@ -84,10 +91,12 @@ export class Enemy {
     }
   }
 
-  draw(ctx) {
-    const θ = this.surfAngle;
+  draw(ctx, alpha = 1) {
+    const ix = this.prevX + (this.x - this.prevX) * alpha;
+    const iy = this.prevY + (this.y - this.prevY) * alpha;
+    const θ = surfaceAngle(ix, iy);
     ctx.save();
-    ctx.translate(this.x, this.y);
+    ctx.translate(ix, iy);
     ctx.rotate(θ + Math.PI / 2);
 
     ctx.fillStyle = this.isLarge ? '#228822' : '#44cc44';

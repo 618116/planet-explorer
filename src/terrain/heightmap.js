@@ -33,6 +33,20 @@ export function isSolid(x, y) {
   return terrain[y * WORLD_W + x] === 1;
 }
 
+// Sweep a line segment against the terrain grid, 1px resolution.
+// Returns { x, y } at first solid hit, or null. Prevents fast-mover tunneling.
+export function raycastTerrain(x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))));
+  const inv = 1 / steps;
+  for (let i = 1; i <= steps; i++) {
+    const t = i * inv;
+    const x = x0 + dx * t, y = y0 + dy * t;
+    if (isSolid(x, y)) return { x, y };
+  }
+  return null;
+}
+
 export function gravityAt(x, y) {
   const dx = CX - x, dy = CY - y;
   const d = Math.sqrt(dx * dx + dy * dy);
