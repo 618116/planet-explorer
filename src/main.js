@@ -1,6 +1,6 @@
 // Entry: initGame, fixed-timestep loop, HUD, fire, god-mode toggle.
 import {
-  VW, VH, CX, CY, GAME_TIME, WIN_TERRAIN_PCT, MAX_POWER, MAX_FUEL,
+  VW, VH, CX, CY, GAME_TIME, WIN_TERRAIN_PCT, MAX_FUEL,
   WALK_FORCE, THRUST_FORCE, FUEL_USE,
   THRUST_WEAKEN_START, THRUST_WEAKEN_END,
   ENEMY_INITIAL_COUNT, ENEMY_SPAWN_INTERVAL,
@@ -31,15 +31,19 @@ import { drawMinimap } from './minimap.js';
 let accumulator = 0;
 let lastFrameStart = performance.now();
 
+const FIRE_POWER = 12;        // fixed projectile speed
+const FIRE_INTERVAL = 6;      // ticks between shots (60Hz → 10 shots/sec)
+let fireCooldown = 0;
+
 function fire() {
   const p = state.player;
   const a = state.aimAngle;
   const startX = p.x + Math.cos(a) * 18;
   const startY = p.y + Math.sin(a) * 18;
-  state.projectiles.push(new Projectile(startX, startY, Math.cos(a) * state.power, Math.sin(a) * state.power));
+  state.projectiles.push(new Projectile(startX, startY, Math.cos(a) * FIRE_POWER, Math.sin(a) * FIRE_POWER));
   p.shots++;
-  p.vx -= Math.cos(a) * state.power * 0.08;
-  p.vy -= Math.sin(a) * state.power * 0.08;
+  p.vx -= Math.cos(a) * FIRE_POWER * 0.04;
+  p.vy -= Math.sin(a) * FIRE_POWER * 0.04;
   resolveSurfaceCollision(p);
 }
 
@@ -60,8 +64,7 @@ function initGame() {
   state.particles = [];
   state.enemies = [];
   resetFalling();
-  state.charging = false;
-  state.power = 0;
+  fireCooldown = 0;
   camera.x = state.player.x;
   camera.y = state.player.y;
   camera.zoom = 1.2;
@@ -110,18 +113,11 @@ function fixedUpdate(input, consumeEdges) {
 
   const canAct = player.hp > 0 && !state.gameOver;
 
-  if (consumeEdges) {
-    if (input.fire.justPressed && canAct) {
-      state.charging = true;
-      state.power = 0;
-      powerBarContainer.style.display = 'block';
-    }
-    if (input.fire.justReleased && state.charging) {
-      state.charging = false;
-      if (state.power > 1) fire();
-      powerBarContainer.style.display = 'none';
-      state.power = 0;
-    }
+  // Rapid-fire: shoot continuously while holding fire button
+  if (fireCooldown > 0) fireCooldown--;
+  if (input.fire.down && canAct && fireCooldown <= 0) {
+    fire();
+    fireCooldown = FIRE_INTERVAL;
   }
 
   if (canAct) {
@@ -158,10 +154,7 @@ function fixedUpdate(input, consumeEdges) {
     }
   }
 
-  if (state.charging) {
-    state.power = Math.min(MAX_POWER, state.power + 0.3);
-    powerBar.style.width = (state.power / MAX_POWER * 100) + '%';
-  }
+
 
   if (player.hp > 0) player.update();
   if (state.godMode) { player.hp = 100; player.fuel = MAX_FUEL; }
