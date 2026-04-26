@@ -1,5 +1,5 @@
 // Camera: smooth follow, rotation, zoom. Screen↔world transforms.
-import { VW, VH, CX, CY } from './config.js';
+import { VW, VH, CX, CY, REF_HZ } from './config.js';
 import { ctx } from './dom.js';
 import { lerpAngle } from './math.js';
 
@@ -11,10 +11,12 @@ export const camera = {
   x: CX, y: CY, zoom: 1.0, rot: 0,
 };
 
-export function updateCamera(targetX, targetY, targetRot) {
-  camera.x += (targetX - camera.x) * CAM_SMOOTH;
-  camera.y += (targetY - camera.y) * CAM_SMOOTH;
-  camera.rot = lerpAngle(camera.rot, targetRot, CAM_ROT_SMOOTH);
+export function updateCamera(targetX, targetY, targetRot, dt) {
+  const posFactor = 1 - Math.pow(1 - CAM_SMOOTH, dt * REF_HZ);
+  camera.x += (targetX - camera.x) * posFactor;
+  camera.y += (targetY - camera.y) * posFactor;
+  const rotFactor = 1 - Math.pow(1 - CAM_ROT_SMOOTH, dt * REF_HZ);
+  camera.rot = lerpAngle(camera.rot, targetRot, rotFactor);
 }
 
 export function applyCam() {

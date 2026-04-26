@@ -1,9 +1,10 @@
 // Enemy: walks on the surface, flips direction on wall/timer, deposits terrain trail.
 import {
   ENEMY_H, ENEMY_W, ENEMY_HP, ENEMY_WALK_SPEED,
-  ENEMY_DIR_CHANGE_MIN, ENEMY_DIR_CHANGE_MAX, ENEMY_DEPOSIT_RATE,
+  ENEMY_DIR_CHANGE_MIN, ENEMY_DIR_CHANGE_MAX, ENEMY_DEPOSIT_INTERVAL,
   LARGE_ENEMY_CHANCE, LARGE_ENEMY_SIZE_MUL, LARGE_ENEMY_HP_MUL,
   LARGE_ENEMY_SPEED_MUL, LARGE_ENEMY_DEPOSIT_T, LARGE_ENEMY_DEPOSIT_H,
+  REF_HZ, GROUND_DAMPING, AIR_DAMPING,
 } from '../config.js';
 import { gravityAt, getSurfaceRadius, depositTerrainPixel } from '../terrain/heightmap.js';
 import {
@@ -37,21 +38,22 @@ export class Enemy {
   }
   get surfAngle() { return surfaceAngle(this.x, this.y); }
 
-  update() {
+  update(dt) {
     this.prevX = this.x; this.prevY = this.y;
     const { gx, gy } = gravityAt(this.x, this.y);
-    this.vx += gx; this.vy += gy;
+    this.vx += gx * dt; this.vy += gy * dt;
 
     if (this.onGround) {
       const θ = this.surfAngle;
       const ta = θ + Math.PI / 2 * this.dir;
-      this.vx += Math.cos(ta) * this.walkSpeed;
-      this.vy += Math.sin(ta) * this.walkSpeed;
+      this.vx += Math.cos(ta) * this.walkSpeed * dt;
+      this.vy += Math.sin(ta) * this.walkSpeed * dt;
     }
 
-    const speed = Math.hypot(this.vx, this.vy);
+    const frameVx = this.vx * dt, frameVy = this.vy * dt;
+    const speed = Math.hypot(frameVx, frameVy);
     const sub = Math.max(1, Math.ceil(speed / 2));
-    const dvx = this.vx / sub, dvy = this.vy / sub;
+    const dvx = frameVx / sub, dvy = frameVy / sub;
     for (let i = 0; i < sub; i++) {
       this.x += dvx; this.y += dvy;
       const { outX, outY } = resolveSurfaceCollision(this);
@@ -61,8 +63,9 @@ export class Enemy {
       });
     }
 
-    if (this.onGround) { this.vx *= 0.82; this.vy *= 0.82; }
-    else { this.vx *= 0.995; this.vy *= 0.995; }
+    const damp = this.onGround ? GROUND_DAMPING : AIR_DAMPING;
+    this.vx *= Math.pow(damp, dt * REF_HZ);
+    this.vy *= Math.pow(damp, dt * REF_HZ);
 
     if (Date.now() > this.nextDirChange) {
       this.dir *= -1;
@@ -70,8 +73,8 @@ export class Enemy {
     }
 
     if (this.onGround) {
-      this.depositTimer++;
-      if (this.depositTimer >= ENEMY_DEPOSIT_RATE) {
+      this.depositTimer += dt;
+      if (this.depositTimer >= ENEMY_DEPOSIT_INTERVAL) {
         this.depositTimer = 0;
         this._depositTerrain();
       }

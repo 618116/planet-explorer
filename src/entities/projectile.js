@@ -1,5 +1,5 @@
 // Ballistic projectile with gravity, trail, and swept terrain-impact collision.
-import { WORLD_W, WORLD_H } from '../config.js';
+import { WORLD_W, WORLD_H, REF_HZ } from '../config.js';
 import { gravityAt, raycastTerrain } from '../terrain/heightmap.js';
 import { explode } from '../explode.js';
 
@@ -7,17 +7,18 @@ export class Projectile {
   constructor(x, y, vx, vy) {
     this.x = x; this.y = y;
     this.prevX = x; this.prevY = y;
-    this.vx = vx; this.vy = vy;
+    this.vx = vx; this.vy = vy;   // px/sec
     this.alive = true;
     this.trail = [];
-    this.age = 0;
+    this.age = 0;                  // seconds
   }
-  update() {
+  update(dt) {
     this.prevX = this.x; this.prevY = this.y;
     const { gx, gy } = gravityAt(this.x, this.y);
-    this.vx += gx * 1.2; this.vy += gy * 1.2;
+    this.vx += gx * 1.2 * dt; this.vy += gy * 1.2 * dt;
 
-    const nx = this.x + this.vx, ny = this.y + this.vy;
+    const frameVx = this.vx * dt, frameVy = this.vy * dt;
+    const nx = this.x + frameVx, ny = this.y + frameVy;
     const hit = raycastTerrain(this.x, this.y, nx, ny);
     if (hit) {
       this.x = hit.x; this.y = hit.y;
@@ -31,11 +32,11 @@ export class Projectile {
     this.x = nx; this.y = ny;
     this.trail.push({ x: this.x, y: this.y });
     if (this.trail.length > 25) this.trail.shift();
-    this.age++;
+    this.age += dt;
     if (this.x < -50 || this.x > WORLD_W + 50 || this.y < -50 || this.y > WORLD_H + 50) {
       this.alive = false; return;
     }
-    if (this.age > 600) this.alive = false;
+    if (this.age > 10) this.alive = false;  // 10 seconds (was 600 ticks)
   }
   draw(ctx, alpha = 1) {
     const ix = this.prevX + (this.x - this.prevX) * alpha;

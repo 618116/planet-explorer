@@ -4,7 +4,7 @@ import {
   WALK_FORCE, THRUST_FORCE, FUEL_USE,
   THRUST_WEAKEN_START, THRUST_WEAKEN_END,
   ENEMY_INITIAL_COUNT, ENEMY_SPAWN_INTERVAL,
-  DT_MS, MAX_PHYSICS_STEPS,
+  DT, DT_MS, MAX_PHYSICS_STEPS, REF_HZ,
 } from './config.js';
 import {
   ctx, hpLabel, fuelLabel, shotsLabel, zoomLabel, terrainLabel,
@@ -31,9 +31,10 @@ import { drawMinimap } from './minimap.js';
 let accumulator = 0;
 let lastFrameStart = performance.now();
 
-const FIRE_POWER = 12;        // fixed projectile speed
-const FIRE_INTERVAL = 6;      // ticks between shots (60Hz → 10 shots/sec)
-let fireCooldown = 0;
+const FIRE_POWER = 12 * REF_HZ;    // px/sec (was 12 px/tick)
+const FIRE_INTERVAL_SEC = 6 / REF_HZ; // seconds between shots (was 6 ticks)
+const FIRE_RECOIL = 0.04;           // recoil multiplier (unchanged)
+let fireCooldown = 0;                // seconds
 
 function fire() {
   const p = state.player;
@@ -42,8 +43,8 @@ function fire() {
   const startY = p.y + Math.sin(a) * 18;
   state.projectiles.push(new Projectile(startX, startY, Math.cos(a) * FIRE_POWER, Math.sin(a) * FIRE_POWER));
   p.shots++;
-  p.vx -= Math.cos(a) * FIRE_POWER * 0.04;
-  p.vy -= Math.sin(a) * FIRE_POWER * 0.04;
+  p.vx -= Math.cos(a) * FIRE_POWER * FIRE_RECOIL;
+  p.vy -= Math.sin(a) * FIRE_POWER * FIRE_RECOIL;
   resolveSurfaceCollision(p);
 }
 
@@ -82,10 +83,11 @@ function initGame() {
   lastFrameStart = performance.now();
 }
 
-// Runs at a fixed 60Hz rate regardless of render frame rate.
+// Runs at a fixed rate (PHYSICS_HZ) regardless of render frame rate.
+// dt is always DT (1/PHYSICS_HZ) in seconds.
 // consumeEdges is true only for the first tick of a frame so
 // just-pressed/just-released events fire exactly once.
-function fixedUpdate(input, consumeEdges) {
+function fixedUpdate(input, consumeEdges, dt) {
   const player = state.player;
   if (!player) return;
 
@@ -114,10 +116,10 @@ function fixedUpdate(input, consumeEdges) {
   const canAct = player.hp > 0 && !state.gameOver;
 
   // Rapid-fire: shoot continuously while holding fire button
-  if (fireCooldown > 0) fireCooldown--;
+  if (fireCooldown > 0) fireCooldown -= dt;
   if (input.fire.down && canAct && fireCooldown <= 0) {
     fire();
-    fireCooldown = FIRE_INTERVAL;
+    fireCooldown = FIRE_INTERVAL_SEC;
   }
 
   if (canAct) {
@@ -125,13 +127,13 @@ function fixedUpdate(input, consumeEdges) {
     const airMul = player.onGround ? 1.0 : 0.4;
     if (input.walk < 0) {
       const ta = θ - Math.PI / 2;
-      player.vx += Math.cos(ta) * WALK_FORCE * airMul;
-      player.vy += Math.sin(ta) * WALK_FORCE * airMul;
+      player.vx += Math.cos(ta) * WALK_FORCE * airMul * dt;
+      player.vy += Math.sin(ta) * WALK_FORCE * airMul * dt;
     }
     if (input.walk > 0) {
       const ta = θ + Math.PI / 2;
-      player.vx += Math.cos(ta) * WALK_FORCE * airMul;
-      player.vy += Math.sin(ta) * WALK_FORCE * airMul;
+      player.vx += Math.cos(ta) * WALK_FORCE * airMul * dt;
+      player.vy += Math.sin(ta) * WALK_FORCE * airMul * dt;
     }
     if (input.thrust && player.fuel > 0) {
       const outX = Math.cos(θ), outY = Math.sin(θ);
@@ -141,9 +143,9 @@ function fixedUpdate(input, consumeEdges) {
         thrustMul = Math.max(0, 1 - (altitude - THRUST_WEAKEN_START) / (THRUST_WEAKEN_END - THRUST_WEAKEN_START));
       }
       const thrust = THRUST_FORCE * thrustMul;
-      player.vx += outX * thrust;
-      player.vy += outY * thrust;
-      player.fuel = Math.max(0, player.fuel - FUEL_USE);
+      player.vx += outX * thrust * dt;
+      player.vy += outY * thrust * dt;
+      player.fuel = Math.max(0, player.fuel - FUEL_USE * dt);
       player.thrusting = true;
       player.onGround = false;
       if (Math.random() < 0.6 * Math.max(0.15, thrustMul)) {
@@ -156,16 +158,16 @@ function fixedUpdate(input, consumeEdges) {
 
 
 
-  if (player.hp > 0) player.update();
+  if (player.hp > 0) player.update(dt);
   if (state.godMode) { player.hp = 100; player.fuel = MAX_FUEL; }
 
-  for (const p of state.projectiles) if (p.alive) p.update();
-  state.projectiles = state.projectiles.filter(p => p.alive || p.age < 300);
+  for (const p of state.projectiles) if (p.alive) p.update(dt);
+  state.projectiles = state.projectiles.filter(p => p.alive || p.age < 5);
 
-  for (const p of state.particles) p.update();
+  for (const p of state.particles) p.update(dt);
   state.particles = state.particles.filter(p => p.life > 0);
 
-  for (const e of state.enemies) if (e.hp > 0) e.update();
+  for (const e of state.enemies) if (e.hp > 0) e.update(dt);
   state.enemies = state.enemies.filter(e => e.hp > 0);
   if (Date.now() - state.lastEnemySpawn >= ENEMY_SPAWN_INTERVAL) {
     spawnEnemy();
@@ -173,7 +175,7 @@ function fixedUpdate(input, consumeEdges) {
   }
 
   let anyChunkActive = false;
-  for (const c of fallingChunks) { c.update(); if (!c.settled) anyChunkActive = true; }
+  for (const c of fallingChunks) { c.update(dt); if (!c.settled) anyChunkActive = true; }
   for (let i = fallingChunks.length - 1; i >= 0; i--) {
     if (fallingChunks[i].settled) fallingChunks.splice(i, 1);
   }
@@ -185,10 +187,10 @@ function fixedUpdate(input, consumeEdges) {
 
   if (player.hp > 0) {
     const targetRot = -(player.surfAngle + Math.PI / 2);
-    updateCamera(player.x, player.y, targetRot);
+    updateCamera(player.x, player.y, targetRot, dt);
   }
 
-  state.shakeAmount *= 0.9;
+  state.shakeAmount *= Math.pow(0.9, dt * REF_HZ);
   if (state.shakeAmount < 0.1) state.shakeAmount = 0;
 }
 
@@ -265,7 +267,7 @@ function gameLoop() {
   let steps = 0;
   let consumeEdges = true;
   while (accumulator >= DT_MS && steps < MAX_PHYSICS_STEPS) {
-    fixedUpdate(input, consumeEdges);
+    fixedUpdate(input, consumeEdges, DT);
     consumeEdges = false;
     accumulator -= DT_MS;
     steps++;

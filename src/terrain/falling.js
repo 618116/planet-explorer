@@ -1,7 +1,7 @@
 // Falling terrain chunks + float-detection after terrain changes.
 import {
   WORLD_W, WORLD_H, CX, CY, CORE_RADIUS,
-  TERRAIN_FALL_SPEED, MIN_CHUNK_SIZE,
+  TERRAIN_FALL_SPEED, CHUNK_GRAVITY, MIN_CHUNK_SIZE,
 } from '../config.js';
 import { dist } from '../math.js';
 import {
@@ -47,19 +47,21 @@ export class FallingChunk {
     this.vx = 0; this.vy = 0;
     this.settled = false;
   }
-  update() {
+  update(dt) {
     if (this.settled) return;
     this.prevOffsetX = this.offsetX; this.prevOffsetY = this.offsetY;
     const wx = this.cmx + this.offsetX, wy = this.cmy + this.offsetY;
     const dx = CX - wx, dy = CY - wy, d = Math.sqrt(dx * dx + dy * dy);
-    if (d > 1) { this.vx += (dx / d) * 0.35; this.vy += (dy / d) * 0.35; }
-    const sp = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    if (d > 1) { this.vx += (dx / d) * CHUNK_GRAVITY * dt; this.vy += (dy / d) * CHUNK_GRAVITY * dt; }
+    const sp = Math.hypot(this.vx, this.vy);
     if (sp > TERRAIN_FALL_SPEED) {
       this.vx = (this.vx / sp) * TERRAIN_FALL_SPEED;
       this.vy = (this.vy / sp) * TERRAIN_FALL_SPEED;
     }
-    const steps = Math.max(1, Math.ceil(sp));
-    const svx = this.vx / steps, svy = this.vy / steps;
+    const frameVx = this.vx * dt, frameVy = this.vy * dt;
+    const frameSp = Math.hypot(frameVx, frameVy);
+    const steps = Math.max(1, Math.ceil(frameSp));
+    const svx = frameVx / steps, svy = frameVy / steps;
     for (let s = 0; s < steps; s++) {
       this.offsetX += svx; this.offsetY += svy;
       if (this._check()) {

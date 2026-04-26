@@ -1,6 +1,7 @@
 // Player: movement, collision, fuel/thrust, HP, sprite with flame + aim line.
 import {
   PLAYER_H, PLAYER_W, MAX_FUEL, FUEL_REGEN,
+  REF_HZ, GROUND_DAMPING, AIR_DAMPING,
 } from '../config.js';
 import { gravityAt, getSurfaceRadius, isSolid } from '../terrain/heightmap.js';
 import {
@@ -22,12 +23,13 @@ export class Player {
   }
   get surfAngle() { return surfaceAngle(this.x, this.y); }
 
-  update() {
+  update(dt) {
     this.prevX = this.x; this.prevY = this.y;
     const { gx, gy } = gravityAt(this.x, this.y);
-    this.vx += gx; this.vy += gy;
+    this.vx += gx * dt; this.vy += gy * dt;
 
-    const speed = Math.hypot(this.vx, this.vy);
+    const frameVx = this.vx * dt, frameVy = this.vy * dt;
+    const speed = Math.hypot(frameVx, frameVy);
     const sub = Math.max(1, Math.ceil(speed));
     const halfW = PLAYER_W / 2;
     const bodyHits = (px, py, oX, oY, tX, tY) => {
@@ -40,7 +42,7 @@ export class Player {
       return false;
     };
     for (let i = 0; i < sub; i++) {
-      const dvx = this.vx / sub, dvy = this.vy / sub;
+      const dvx = frameVx / sub, dvy = frameVy / sub;
       const nx = this.x + dvx, ny = this.y + dvy;
       const θ = surfaceAngle(nx, ny);
       const oX = Math.cos(θ), oY = Math.sin(θ);
@@ -48,12 +50,16 @@ export class Player {
       if (!bodyHits(nx, ny, oX, oY, tX, tY)) {
         this.x = nx; this.y = ny;
       } else {
-        const radDot = this.vx * oX + this.vy * oY;
-        const tvx = this.vx - oX * radDot, tvy = this.vy - oY * radDot;
-        const snx = this.x + tvx / sub, sny = this.y + tvy / sub;
+        const radDot = frameVx / sub * oX + frameVy / sub * oY;
+        const tvx = dvx - oX * radDot, tvy = dvy - oY * radDot;
+        const snx = this.x + tvx, sny = this.y + tvy;
         if (!bodyHits(snx, sny, oX, oY, tX, tY)) {
           this.x = snx; this.y = sny;
-          this.vx = tvx; this.vy = tvy;
+          // Remove inward velocity component (in px/sec)
+          const radDotV = this.vx * oX + this.vy * oY;
+          const slideVx = this.vx - oX * radDotV;
+          const slideVy = this.vy - oY * radDotV;
+          this.vx = slideVx; this.vy = slideVy;
         } else {
           this.vx = 0; this.vy = 0;
         }
@@ -62,10 +68,11 @@ export class Player {
       resolveBodyCollision(this, halfW, PLAYER_H, 3, outX, outY);
     }
 
-    if (this.onGround) { this.vx *= 0.82; this.vy *= 0.82; }
-    else { this.vx *= 0.995; this.vy *= 0.995; }
+    const damp = this.onGround ? GROUND_DAMPING : AIR_DAMPING;
+    const dampFactor = Math.pow(damp, dt * REF_HZ);
+    this.vx *= dampFactor; this.vy *= dampFactor;
 
-    if (!this.thrusting) this.fuel = Math.min(MAX_FUEL, this.fuel + FUEL_REGEN);
+    if (!this.thrusting) this.fuel = Math.min(MAX_FUEL, this.fuel + FUEL_REGEN * dt);
     this.thrusting = false;
   }
 
