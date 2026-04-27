@@ -259,14 +259,17 @@ function render(alpha) {
 }
 
 function gameLoop() {
-  requestAnimationFrame(gameLoop);
   const now = performance.now();
   let frameTime = now - lastFrameStart;
   if (frameTime > 250) frameTime = 250;
   lastFrameStart = now;
 
-  const fps = 1000 / Math.max(1, frameTime);
-  state.fpsSmooth += (fps - state.fpsSmooth) * 0.05;
+  // Only update FPS counter for plausible frame durations (≥4 ms ≈ 250 Hz cap)
+  // to filter out timing jitter that inflates the displayed value.
+  if (frameTime >= 4) {
+    const fps = 1000 / frameTime;
+    state.fpsSmooth += (fps - state.fpsSmooth) * 0.1;
+  }
   state.lastFrameTime = now;
 
   const player = state.player;
@@ -295,8 +298,12 @@ function gameLoop() {
 
   const alpha = Math.min(1, accumulator / DT_MS);
   render(alpha);
+
+  // Schedule next frame at the end so rendering completes before the next
+  // VSync callback, ensuring proper synchronisation with the display refresh.
+  requestAnimationFrame(gameLoop);
 }
 
 installInput({ onReset: initGame, onGodToggle: toggleGodMode });
 initGame();
-gameLoop();
+requestAnimationFrame(gameLoop);
