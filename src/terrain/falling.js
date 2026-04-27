@@ -46,6 +46,25 @@ export class FallingChunk {
     this.prevOffsetX = 0; this.prevOffsetY = 0;
     this.vx = 0; this.vy = 0;
     this.settled = false;
+    // P4: 오프스크린 캔버스에 미리 렌더 (대량 drawcall 제거)
+    this._canvas = (() => {
+      const c = document.createElement('canvas');
+      c.width = this.w; c.height = this.h;
+      const ctx = c.getContext('2d');
+      const img = ctx.createImageData(this.w, this.h);
+      const d = img.data;
+      for (let ly = 0; ly < this.h; ly++)
+        for (let lx = 0; lx < this.w; lx++) {
+          const li = ly * this.w + lx;
+          if (this.grid[li]) {
+            const j = li * 4;
+            d[j] = this.colR[li]; d[j + 1] = this.colG[li];
+            d[j + 2] = this.colB[li]; d[j + 3] = 255;
+          }
+        }
+      ctx.putImageData(img, 0, 0);
+      return c;
+    })();
   }
   update(dt) {
     if (this.settled) return;
@@ -103,12 +122,9 @@ export class FallingChunk {
     if (this.settled) return;
     const ox = this.prevOffsetX + (this.offsetX - this.prevOffsetX) * alpha;
     const oy = this.prevOffsetY + (this.offsetY - this.prevOffsetY) * alpha;
-    const bx = Math.round(ox), by = Math.round(oy);
-    for (let ly = 0; ly < this.h; ly++) for (let lx = 0; lx < this.w; lx++) {
-      const li = ly * this.w + lx; if (!this.grid[li]) continue;
-      ctx.fillStyle = `rgb(${this.colR[li]},${this.colG[li]},${this.colB[li]})`;
-      ctx.fillRect(this.originX + lx + bx, this.originY + ly + by, 1, 1);
-    }
+    ctx.drawImage(this._canvas,
+      this.originX + Math.round(ox),
+      this.originY + Math.round(oy));
   }
 }
 
@@ -156,7 +172,8 @@ export function detectFloatingTerrain() {
 }
 
 export function carveTerrain(cx, cy, radius) {
-  carveCircle(cx, cy, radius);
+  const removed = carveCircle(cx, cy, radius);
   blitTerrain();
-  setTimeout(() => detectFloatingTerrain(), 60);
+  floatState.pending = true;
+  return removed;
 }

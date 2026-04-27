@@ -162,13 +162,29 @@ function fixedUpdate(input, consumeEdges, dt) {
   if (state.godMode) { player.hp = 100; player.fuel = MAX_FUEL; }
 
   for (const p of state.projectiles) if (p.alive) p.update(dt);
-  state.projectiles = state.projectiles.filter(p => p.alive || p.age < 5);
+  { let w = 0;
+    for (let i = 0; i < state.projectiles.length; i++) {
+      const p = state.projectiles[i];
+      if (p.alive || p.age < 5) state.projectiles[w++] = p;
+    }
+    state.projectiles.length = w;
+  }
 
   for (const p of state.particles) p.update(dt);
-  state.particles = state.particles.filter(p => p.life > 0);
+  { let w = 0;
+    for (let i = 0; i < state.particles.length; i++) {
+      if (state.particles[i].life > 0) state.particles[w++] = state.particles[i];
+    }
+    state.particles.length = w;
+  }
 
   for (const e of state.enemies) if (e.hp > 0) e.update(dt);
-  state.enemies = state.enemies.filter(e => e.hp > 0);
+  { let w = 0;
+    for (let i = 0; i < state.enemies.length; i++) {
+      if (state.enemies[i].hp > 0) state.enemies[w++] = state.enemies[i];
+    }
+    state.enemies.length = w;
+  }
   if (Date.now() - state.lastEnemySpawn >= ENEMY_SPAWN_INTERVAL) {
     spawnEnemy();
     state.lastEnemySpawn = Date.now();
@@ -176,8 +192,11 @@ function fixedUpdate(input, consumeEdges, dt) {
 
   let anyChunkActive = false;
   for (const c of fallingChunks) { c.update(dt); if (!c.settled) anyChunkActive = true; }
-  for (let i = fallingChunks.length - 1; i >= 0; i--) {
-    if (fallingChunks[i].settled) fallingChunks.splice(i, 1);
+  { let w = 0;
+    for (let i = 0; i < fallingChunks.length; i++) {
+      if (!fallingChunks[i].settled) fallingChunks[w++] = fallingChunks[i];
+    }
+    fallingChunks.length = w;
   }
 
   if (getPendingFloat() && !anyChunkActive) {

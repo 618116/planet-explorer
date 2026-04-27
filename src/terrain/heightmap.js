@@ -21,6 +21,10 @@ export const terrOff = document.createElement('canvas');
 terrOff.width = WORLD_W; terrOff.height = WORLD_H;
 const terrCtx = terrOff.getContext('2d');
 
+// P1: 재사용 ImageData (매 호출 10MB 할당 제거)
+const terrImgData = terrCtx.createImageData(WORLD_W, WORLD_H);
+const terrImgBuf = terrImgData.data;
+
 let initialTerrainCount = 0;
 let currentTerrainCount = 0;
 let terrainPctCache = 100;
@@ -66,13 +70,18 @@ export function carveCircle(cx, cy, radius) {
   const x1 = Math.min(WORLD_W - 1, Math.ceil(cx + radius));
   const y0 = Math.max(0, (cy - radius) | 0);
   const y1 = Math.min(WORLD_H - 1, Math.ceil(cy + radius));
+  let removed = 0;
   for (let y = y0; y <= y1; y++)
     for (let x = x0; x <= x1; x++) {
-      if ((x - cx) ** 2 + (y - cy) ** 2 < r2 && (x - CX) ** 2 + (y - CY) ** 2 >= cr2)
-        terrain[y * WORLD_W + x] = 0;
+      if ((x - cx) ** 2 + (y - cy) ** 2 < r2 && (x - CX) ** 2 + (y - CY) ** 2 >= cr2) {
+        if (terrain[y * WORLD_W + x]) { terrain[y * WORLD_W + x] = 0; removed++; }
+      }
     }
+  return removed;
 }
 
+// P3: 재사용 출력 버퍼 (매 호출 Array 할당 제거)
+const _cc = new Uint8Array(3);
 function computeColor(x, y) {
   const d = dist(x, y, CX, CY);
   const angle = Math.atan2(y - CY, x - CX);
@@ -81,14 +90,13 @@ function computeColor(x, y) {
   const n1 = pseudoRand(x * 0.07 + y * 0.07);
   const n2 = pseudoRand(x * 0.13 + y * 0.11);
 
-  if (depth < 3) return [55 + n1 * 40 | 0, 140 + n2 * 50 | 0, 45];
-  if (depth < 25) {
+  if (depth < 3) { _cc[0] = 55 + n1 * 40 | 0; _cc[1] = 140 + n2 * 50 | 0; _cc[2] = 45; }
+  else if (depth < 25) {
     const t = (depth - 3) / 22;
-    return [145 - t * 40 + n1 * 15 | 0, 95 - t * 25 + n2 * 10 | 0, 45];
+    _cc[0] = 145 - t * 40 + n1 * 15 | 0; _cc[1] = 95 - t * 25 + n2 * 10 | 0; _cc[2] = 45;
   }
-  if (d < CORE_RADIUS + 18) return [180 + n1 * 60 | 0, 60 + n2 * 50 | 0, 15 + n1 * 20 | 0];
-  const n = n1 * 25;
-  return [78 + n | 0, 72 + n | 0, 62 + n | 0];
+  else if (d < CORE_RADIUS + 18) { _cc[0] = 180 + n1 * 60 | 0; _cc[1] = 60 + n2 * 50 | 0; _cc[2] = 15 + n1 * 20 | 0; }
+  else { const n = n1 * 25; _cc[0] = 78 + n | 0; _cc[1] = 72 + n | 0; _cc[2] = 62 + n | 0; }
 }
 
 function rebuildColors() {
@@ -96,8 +104,8 @@ function rebuildColors() {
     for (let x = 0; x < WORLD_W; x++) {
       const i = y * WORLD_W + x;
       if (terrain[i]) {
-        const [r, g, b] = computeColor(x, y);
-        terrainR[i] = r; terrainG[i] = g; terrainB[i] = b;
+        computeColor(x, y);
+        terrainR[i] = _cc[0]; terrainG[i] = _cc[1]; terrainB[i] = _cc[2];
       }
     }
 }
@@ -109,19 +117,24 @@ export function rebuildColorsRect(x0, y0, x1, y1) {
     for (let x = x0; x <= x1; x++) {
       const i = y * WORLD_W + x;
       if (terrain[i]) {
-        const [r, g, b] = computeColor(x, y);
-        terrainR[i] = r; terrainG[i] = g; terrainB[i] = b;
+        computeColor(x, y);
+        terrainR[i] = _cc[0]; terrainG[i] = _cc[1]; terrainB[i] = _cc[2];
       }
     }
 }
 
 export function blitTerrain() {
-  const img = terrCtx.createImageData(WORLD_W, WORLD_H);
-  const d = img.data;
   for (let i = 0, j = 0; i < WORLD_W * WORLD_H; i++, j += 4) {
-    if (terrain[i]) { d[j] = terrainR[i]; d[j + 1] = terrainG[i]; d[j + 2] = terrainB[i]; d[j + 3] = 255; }
+    if (terrain[i]) {
+      terrImgBuf[j] = terrainR[i];
+      terrImgBuf[j + 1] = terrainG[i];
+      terrImgBuf[j + 2] = terrainB[i];
+      terrImgBuf[j + 3] = 255;
+    } else {
+      terrImgBuf[j + 3] = 0;  // 파괴된 지형은 투명으로 명시
+    }
   }
-  terrCtx.putImageData(img, 0, 0);
+  terrCtx.putImageData(terrImgData, 0, 0);
 }
 
 export function generateTerrain() {
@@ -151,9 +164,14 @@ export function generateTerrain() {
   terrainPctCache = 100;
 }
 
-export function recalcTerrainPercent() {
-  currentTerrainCount = 0;
-  for (let i = 0; i < WORLD_W * WORLD_H; i++) if (terrain[i]) currentTerrainCount++;
+export function recalcTerrainPercent(removedCount = 0) {
+  if (removedCount > 0) {
+    currentTerrainCount -= removedCount;
+  } else {
+    // fallback: 전수 순회 (초기화 등에서만 사용)
+    currentTerrainCount = 0;
+    for (let i = 0; i < WORLD_W * WORLD_H; i++) if (terrain[i]) currentTerrainCount++;
+  }
   terrainPctCache = initialTerrainCount > 0
     ? Math.round(currentTerrainCount / initialTerrainCount * 100)
     : 100;
@@ -165,9 +183,9 @@ export function depositTerrainPixel(x, y) {
   if (terrain[i]) return false;
   if (dist(x, y, CX, CY) < CORE_RADIUS) return false;
   terrain[i] = 1;
-  const [r, g, b] = computeColor(x, y);
-  terrainR[i] = r; terrainG[i] = g; terrainB[i] = b;
-  terrCtx.fillStyle = `rgb(${r},${g},${b})`;
+  computeColor(x, y);
+  terrainR[i] = _cc[0]; terrainG[i] = _cc[1]; terrainB[i] = _cc[2];
+  terrCtx.fillStyle = `rgb(${_cc[0]},${_cc[1]},${_cc[2]})`;
   terrCtx.fillRect(x, y, 1, 1);
   currentTerrainCount++;
   terrainPctCache = Math.round(currentTerrainCount / initialTerrainCount * 100);

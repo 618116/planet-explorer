@@ -7,8 +7,8 @@ import { Particle } from './entities/particle.js';
 import { state } from './state.js';
 
 export function explode(x, y) {
-  carveTerrain(x, y, EXPLOSION_RADIUS);
-  recalcTerrainPercent();
+  const removed = carveTerrain(x, y, EXPLOSION_RADIUS);
+  recalcTerrainPercent(removed);
   const R = EXPLOSION_RADIUS * 1.6;
   if (state.player) applyRadialKnockback(state.player, x, y, R, 6, 40, state.godMode);
   for (const e of state.enemies) {
