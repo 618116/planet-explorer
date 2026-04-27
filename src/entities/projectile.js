@@ -17,8 +17,7 @@ export class Projectile {
     const { gx, gy } = gravityAt(this.x, this.y);
     this.vx += gx * 1.2 * dt; this.vy += gy * 1.2 * dt;
 
-    const frameVx = this.vx * dt, frameVy = this.vy * dt;
-    const nx = this.x + frameVx, ny = this.y + frameVy;
+    const nx = this.x + this.vx, ny = this.y + this.vy;
     const hit = raycastTerrain(this.x, this.y, nx, ny);
     if (hit) {
       this.x = hit.x; this.y = hit.y;

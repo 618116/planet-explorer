@@ -58,10 +58,8 @@ export class FallingChunk {
       this.vx = (this.vx / sp) * TERRAIN_FALL_SPEED;
       this.vy = (this.vy / sp) * TERRAIN_FALL_SPEED;
     }
-    const frameVx = this.vx * dt, frameVy = this.vy * dt;
-    const frameSp = Math.hypot(frameVx, frameVy);
-    const steps = Math.max(1, Math.ceil(frameSp));
-    const svx = frameVx / steps, svy = frameVy / steps;
+    const steps = Math.max(1, Math.ceil(sp));
+    const svx = this.vx / steps, svy = this.vy / steps;
     for (let s = 0; s < steps; s++) {
       this.offsetX += svx; this.offsetY += svy;
       if (this._check()) {

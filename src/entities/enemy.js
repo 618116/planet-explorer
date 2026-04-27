@@ -50,10 +50,9 @@ export class Enemy {
       this.vy += Math.sin(ta) * this.walkSpeed * dt;
     }
 
-    const frameVx = this.vx * dt, frameVy = this.vy * dt;
-    const speed = Math.hypot(frameVx, frameVy);
+    const speed = Math.hypot(this.vx, this.vy);
     const sub = Math.max(1, Math.ceil(speed / 2));
-    const dvx = frameVx / sub, dvy = frameVy / sub;
+    const dvx = this.vx / sub, dvy = this.vy / sub;
     for (let i = 0; i < sub; i++) {
       this.x += dvx; this.y += dvy;
       const { outX, outY } = resolveSurfaceCollision(this);

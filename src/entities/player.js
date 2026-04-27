@@ -28,8 +28,7 @@ export class Player {
     const { gx, gy } = gravityAt(this.x, this.y);
     this.vx += gx * dt; this.vy += gy * dt;
 
-    const frameVx = this.vx * dt, frameVy = this.vy * dt;
-    const speed = Math.hypot(frameVx, frameVy);
+    const speed = Math.hypot(this.vx, this.vy);
     const sub = Math.max(1, Math.ceil(speed));
     const halfW = PLAYER_W / 2;
     const bodyHits = (px, py, oX, oY, tX, tY) => {
@@ -42,7 +41,7 @@ export class Player {
       return false;
     };
     for (let i = 0; i < sub; i++) {
-      const dvx = frameVx / sub, dvy = frameVy / sub;
+      const dvx = this.vx / sub, dvy = this.vy / sub;
       const nx = this.x + dvx, ny = this.y + dvy;
       const θ = surfaceAngle(nx, ny);
       const oX = Math.cos(θ), oY = Math.sin(θ);
@@ -50,16 +49,14 @@ export class Player {
       if (!bodyHits(nx, ny, oX, oY, tX, tY)) {
         this.x = nx; this.y = ny;
       } else {
-        const radDot = frameVx / sub * oX + frameVy / sub * oY;
+        const radDot = this.vx / sub * oX + this.vy / sub * oY;
         const tvx = dvx - oX * radDot, tvy = dvy - oY * radDot;
         const snx = this.x + tvx, sny = this.y + tvy;
         if (!bodyHits(snx, sny, oX, oY, tX, tY)) {
           this.x = snx; this.y = sny;
-          // Remove inward velocity component (in px/sec)
           const radDotV = this.vx * oX + this.vy * oY;
-          const slideVx = this.vx - oX * radDotV;
-          const slideVy = this.vy - oY * radDotV;
-          this.vx = slideVx; this.vy = slideVy;
+          this.vx -= oX * radDotV;
+          this.vy -= oY * radDotV;
         } else {
           this.vx = 0; this.vy = 0;
         }

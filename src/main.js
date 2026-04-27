@@ -31,7 +31,7 @@ import { drawMinimap } from './minimap.js';
 let accumulator = 0;
 let lastFrameStart = performance.now();
 
-const FIRE_POWER = 12 * REF_HZ;    // px/sec (was 12 px/tick)
+const FIRE_POWER = 12;              // px/tick projectile speed
 const FIRE_INTERVAL_SEC = 6 / REF_HZ; // seconds between shots (was 6 ticks)
 const FIRE_RECOIL = 0.04;           // recoil multiplier (unchanged)
 let fireCooldown = 0;                // seconds
