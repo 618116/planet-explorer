@@ -58,7 +58,10 @@ export class Player {
           this.vx -= oX * radDotV;
           this.vy -= oY * radDotV;
         } else {
-          this.vx = 0; this.vy = 0;
+          // Both moves blocked. Reduce velocity; resolveSurfaceCollision
+          // will extract via contact normal.
+          this.vx *= 0.5;
+          this.vy *= 0.5;
         }
       }
       const { outX, outY } = resolveSurfaceCollision(this);

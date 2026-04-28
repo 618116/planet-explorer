@@ -21,28 +21,59 @@ export function placeAtAngle(obj, angle, baseRadius) {
   obj.y = CY + Math.sin(angle) * (baseRadius + 2);
 }
 
-// Lift obj out of terrain, set onGround, zero inward velocity component.
+// Compute terrain contact normal at integer position (px, py).
+// Sums weighted repulsion vectors from nearby solid pixels (closer = stronger).
+// Returns { x, y } unit vector pointing away from terrain, or null if
+// the point is not embedded or is fully surrounded (degenerate).
+function terrainNormal(px, py) {
+  let nx = 0, ny = 0;
+  const R = 4;
+  for (let dy = -R; dy <= R; dy++) {
+    for (let dx = -R; dx <= R; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      if (isSolid(px + dx, py + dy)) {
+        const d2 = dx * dx + dy * dy;
+        nx -= dx / d2;
+        ny -= dy / d2;
+      }
+    }
+  }
+  const len = Math.hypot(nx, ny);
+  if (len < 0.001) return null;
+  return { x: nx / len, y: ny / len };
+}
+
+// Push obj out of terrain along the contact normal, cancel penetrating
+// velocity, and detect ground contact.
 // Returns outward unit vector (outX, outY) for downstream body-collision checks.
 export function resolveSurfaceCollision(obj) {
-  obj.onGround = false;
   const θ = surfaceAngle(obj.x, obj.y);
   const outX = Math.cos(θ), outY = Math.sin(θ);
 
   if (isSolid(obj.x, obj.y)) {
-    const spd = Math.hypot(obj.vx, obj.vy);
-    const escX = spd > 0.5 ? -obj.vx / spd : outX;
-    const escY = spd > 0.5 ? -obj.vy / spd : outY;
-    for (let i = 0; i < 30; i++) {
+    const n = terrainNormal(Math.round(obj.x), Math.round(obj.y));
+    const escX = n ? n.x : outX;
+    const escY = n ? n.y : outY;
+
+    for (let i = 0; i < 60; i++) {
       obj.x += escX; obj.y += escY;
       if (!isSolid(obj.x, obj.y)) break;
     }
-    obj.onGround = true;
-    const inDot = obj.vx * (-escX) + obj.vy * (-escY);
-    if (inDot > 0) { obj.vx += escX * inDot; obj.vy += escY * inDot; }
+
+    // Cancel the velocity component going into the surface.
+    const vInto = -(obj.vx * escX + obj.vy * escY);
+    if (vInto > 0) {
+      obj.vx += escX * vInto;
+      obj.vy += escY * vInto;
+    }
   }
-  if (!obj.onGround && isSolid(obj.x - outX * 2, obj.y - outY * 2)) {
-    obj.onGround = true;
-  }
+
+  // onGround: purely positional — is there solid terrain 2 px toward planet center?
+  obj.onGround = isSolid(
+    Math.round(obj.x - outX * 2),
+    Math.round(obj.y - outY * 2),
+  );
+
   return { outX, outY };
 }
 
