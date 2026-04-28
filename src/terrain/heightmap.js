@@ -51,11 +51,15 @@ export function raycastTerrain(x0, y0, x1, y1) {
   return null;
 }
 
+const _grav = { gx: 0, gy: 0 };
+
 export function gravityAt(x, y) {
   const dx = CX - x, dy = CY - y;
   const d = Math.sqrt(dx * dx + dy * dy);
-  if (d < 1) return { gx: 0, gy: 0 };
-  return { gx: (dx / d) * GRAVITY, gy: (dy / d) * GRAVITY };
+  if (d < 1) { _grav.gx = 0; _grav.gy = 0; return _grav; }
+  _grav.gx = (dx / d) * GRAVITY;
+  _grav.gy = (dy / d) * GRAVITY;
+  return _grav;
 }
 
 export function getSurfaceRadius(angle) {

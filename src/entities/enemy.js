@@ -63,8 +63,9 @@ export class Enemy {
     }
 
     const damp = this.onGround ? GROUND_DAMPING : AIR_DAMPING;
-    this.vx *= Math.pow(damp, dt * REF_HZ);
-    this.vy *= Math.pow(damp, dt * REF_HZ);
+    const dampFactor = Math.pow(damp, dt * REF_HZ);
+    this.vx *= dampFactor;
+    this.vy *= dampFactor;
 
     if (Date.now() > this.nextDirChange) {
       this.dir *= -1;

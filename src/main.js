@@ -4,7 +4,7 @@ import {
   WALK_FORCE, THRUST_FORCE, FUEL_USE,
   THRUST_WEAKEN_START, THRUST_WEAKEN_END,
   ENEMY_INITIAL_COUNT, ENEMY_SPAWN_INTERVAL,
-  DT, DT_MS, MAX_PHYSICS_STEPS, REF_HZ,
+  DT, DT_MS, MAX_PHYSICS_STEPS, REF_HZ, PARTICLE_DAMPING,
 } from './config.js';
 import {
   ctx, hpLabel, fuelLabel, shotsLabel, zoomLabel, terrainLabel,
@@ -170,7 +170,7 @@ function fixedUpdate(input, consumeEdges, dt) {
     state.projectiles.length = w;
   }
 
-  for (const p of state.particles) p.update(dt);
+  for (const p of state.particles) p.update(dt, Math.pow(PARTICLE_DAMPING, dt * REF_HZ));
   { let w = 0;
     for (let i = 0; i < state.particles.length; i++) {
       if (state.particles[i].life > 0) state.particles[w++] = state.particles[i];

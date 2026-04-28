@@ -37,7 +37,7 @@ export class Particle {
       this.b = 40;
     }
   }
-  update(dt) {
+  update(dt, dampFactor) {
     this.prevX = this.x; this.prevY = this.y;
     if (this.type === 'dirt' || this.type === 'thrust') {
       const { gx, gy } = gravityAt(this.x, this.y);
@@ -48,8 +48,8 @@ export class Particle {
       this.vy += Math.sin(θ) * 1.8 * dt;
     }
     this.x += this.vx; this.y += this.vy;
-    this.vx *= Math.pow(PARTICLE_DAMPING, dt * REF_HZ);
-    this.vy *= Math.pow(PARTICLE_DAMPING, dt * REF_HZ);
+    this.vx *= dampFactor;
+    this.vy *= dampFactor;
     this.life -= this.decay * dt;
   }
   draw(ctx, alpha = 1) {

@@ -11,6 +11,11 @@ import {
 
 const DX4 = [1, -1, 0, 0], DY4 = [0, 0, 1, -1];
 
+// Pre-allocated temp arrays for detectFloatingTerrain (~25 MB saved per call)
+const _grounded = new Uint8Array(WORLD_W * WORLD_H);
+const _floatQueue = new Int32Array(WORLD_W * WORLD_H * 2);
+const _visited = new Uint8Array(WORLD_W * WORLD_H);
+
 export const fallingChunks = [];
 const floatState = { pending: false };
 
@@ -129,32 +134,32 @@ export class FallingChunk {
 }
 
 export function detectFloatingTerrain() {
-  const grounded = new Uint8Array(WORLD_W * WORLD_H);
-  const queue = new Int32Array(WORLD_W * WORLD_H * 2);
+  _grounded.fill(0);
+  _visited.fill(0);
   let qH = 0, qT = 0;
   const cr = CORE_RADIUS;
   for (let y = Math.max(0, CY - cr | 0); y <= Math.min(WORLD_H - 1, CY + cr | 0); y++)
     for (let x = Math.max(0, CX - cr | 0); x <= Math.min(WORLD_W - 1, CX + cr | 0); x++) {
       if (dist(x, y, CX, CY) <= cr) {
         const i = y * WORLD_W + x;
-        if (terrain[i] && !grounded[i]) { grounded[i] = 1; queue[qT++] = x; queue[qT++] = y; }
+        if (terrain[i] && !_grounded[i]) { _grounded[i] = 1; _floatQueue[qT++] = x; _floatQueue[qT++] = y; }
       }
     }
   while (qH < qT) {
-    const qx = queue[qH++], qy = queue[qH++];
+    const qx = _floatQueue[qH++], qy = _floatQueue[qH++];
     for (let d = 0; d < 4; d++) {
       const nx = qx + DX4[d], ny = qy + DY4[d];
       if (nx < 0 || nx >= WORLD_W || ny < 0 || ny >= WORLD_H) continue;
       const ni = ny * WORLD_W + nx;
-      if (terrain[ni] && !grounded[ni]) { grounded[ni] = 1; queue[qT++] = nx; queue[qT++] = ny; }
+      if (terrain[ni] && !_grounded[ni]) { _grounded[ni] = 1; _floatQueue[qT++] = nx; _floatQueue[qT++] = ny; }
     }
   }
-  const visited = new Uint8Array(WORLD_W * WORLD_H);
+  // visited is already zeroed above
   let found = false;
   for (let y = 0; y < WORLD_H; y++) for (let x = 0; x < WORLD_W; x++) {
     const i = y * WORLD_W + x;
-    if (!terrain[i] || grounded[i] || visited[i]) continue;
-    const px = []; const cq = [x, y]; visited[i] = 1; let ch = 0;
+    if (!terrain[i] || _grounded[i] || _visited[i]) continue;
+    const px = []; const cq = [x, y]; _visited[i] = 1; let ch = 0;
     while (ch < cq.length) {
       const cx = cq[ch++], cy = cq[ch++], ci = cy * WORLD_W + cx;
       px.push({ x: cx, y: cy, r: terrainR[ci], g: terrainG[ci], b: terrainB[ci] });
@@ -163,7 +168,7 @@ export function detectFloatingTerrain() {
         const nx = cx + DX4[d], ny = cy + DY4[d];
         if (nx < 0 || nx >= WORLD_W || ny < 0 || ny >= WORLD_H) continue;
         const ni = ny * WORLD_W + nx;
-        if (terrain[ni] && !grounded[ni] && !visited[ni]) { visited[ni] = 1; cq.push(nx, ny); }
+        if (terrain[ni] && !_grounded[ni] && !_visited[ni]) { _visited[ni] = 1; cq.push(nx, ny); }
       }
     }
     if (px.length >= MIN_CHUNK_SIZE) { fallingChunks.push(new FallingChunk(px)); found = true; }

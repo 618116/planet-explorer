@@ -27,7 +27,7 @@ export function placeAtAngle(obj, angle, baseRadius) {
 // the point is not embedded or is fully surrounded (degenerate).
 function terrainNormal(px, py) {
   let nx = 0, ny = 0;
-  const R = 4;
+  const R = 3;
   for (let dy = -R; dy <= R; dy++) {
     for (let dx = -R; dx <= R; dx++) {
       if (dx === 0 && dy === 0) continue;

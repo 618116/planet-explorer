@@ -9,7 +9,9 @@ export class Projectile {
     this.prevX = x; this.prevY = y;
     this.vx = vx; this.vy = vy;   // px/sec
     this.alive = true;
-    this.trail = [];
+    this.trail = new Array(25);
+    this.trailHead = 0;
+    this.trailCount = 0;
     this.age = 0;                  // seconds
   }
   update(dt) {
@@ -21,16 +23,18 @@ export class Projectile {
     const hit = raycastTerrain(this.x, this.y, nx, ny);
     if (hit) {
       this.x = hit.x; this.y = hit.y;
-      this.trail.push({ x: this.x, y: this.y });
-      if (this.trail.length > 25) this.trail.shift();
+      this.trail[this.trailHead] = { x: this.x, y: this.y };
+      this.trailHead = (this.trailHead + 1) % 25;
+      if (this.trailCount < 25) this.trailCount++;
       this.alive = false;
       explode(this.x, this.y);
       return;
     }
 
     this.x = nx; this.y = ny;
-    this.trail.push({ x: this.x, y: this.y });
-    if (this.trail.length > 25) this.trail.shift();
+    this.trail[this.trailHead] = { x: this.x, y: this.y };
+    this.trailHead = (this.trailHead + 1) % 25;
+    if (this.trailCount < 25) this.trailCount++;
     this.age += dt;
     if (this.x < -50 || this.x > WORLD_W + 50 || this.y < -50 || this.y > WORLD_H + 50) {
       this.alive = false; return;
@@ -40,10 +44,11 @@ export class Projectile {
   draw(ctx, alpha = 1) {
     const ix = this.prevX + (this.x - this.prevX) * alpha;
     const iy = this.prevY + (this.y - this.prevY) * alpha;
-    for (let i = 0; i < this.trail.length; i++) {
-      const t = i / this.trail.length;
+    for (let i = 0; i < this.trailCount; i++) {
+      const idx = (this.trailHead - this.trailCount + i + 25) % 25;
+      const t = i / this.trailCount;
       ctx.fillStyle = `rgba(255,${150 + 105 * t | 0},${50 * t | 0},${t * 0.7})`;
-      ctx.beginPath(); ctx.arc(this.trail[i].x, this.trail[i].y, 1 + t * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(this.trail[idx].x, this.trail[idx].y, 1 + t * 2, 0, Math.PI * 2); ctx.fill();
     }
     ctx.fillStyle = '#feca57';
     ctx.shadowBlur = 10;
