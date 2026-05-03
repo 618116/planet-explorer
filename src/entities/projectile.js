@@ -1,12 +1,10 @@
-// Ballistic projectile with gravity, trail, and swept terrain-impact collision.
-import { WORLD_W, WORLD_H, REF_HZ } from '../config.js';
-import { gravityAt, raycastTerrain } from '../terrain/heightmap.js';
-import { explode } from '../explode.js';
+// Base class for all projectiles.
+import { WORLD_W, WORLD_H } from '../config.js';
 
 export class Projectile {
   constructor(x, y, vx, vy) {
     this.x = x; this.y = y;
-    this.prevX = x; this.prevY = y;
+    this.prevX = x; this.prevY =y;
     this.vx = vx; this.vy = vy;   // px/sec
     this.alive = true;
     this.trail = new Array(25);
@@ -14,46 +12,50 @@ export class Projectile {
     this.trailCount = 0;
     this.age = 0;                  // seconds
   }
+
   update(dt) {
     this.prevX = this.x; this.prevY = this.y;
-    const { gx, gy } = gravityAt(this.x, this.y);
-    this.vx += gx * 1.2 * dt; this.vy += gy * 1.2 * dt;
-
-    const nx = this.x + this.vx, ny = this.y + this.vy;
-    const hit = raycastTerrain(this.x, this.y, nx, ny);
-    if (hit) {
-      this.x = hit.x; this.y = hit.y;
-      this.trail[this.trailHead] = { x: this.x, y: this.y };
-      this.trailHead = (this.trailHead + 1) % 25;
-      if (this.trailCount < 25) this.trailCount++;
+    this.age += dt;
+    
+    // Boundary check
+    if (this.x < -50 || this.x > WORLD_W + 50 || this.y < -50 || this.y > WORLD_H + 50) {
       this.alive = false;
-      explode(this.x, this.y);
       return;
     }
+    if (this.age > 10) {
+      this.alive = false;
+      return;
+    }
+  }
 
+  updatePosition(nx, ny) {
     this.x = nx; this.y = ny;
     this.trail[this.trailHead] = { x: this.x, y: this.y };
     this.trailHead = (this.trailHead + 1) % 25;
     if (this.trailCount < 25) this.trailCount++;
-    this.age += dt;
-    if (this.x < -50 || this.x > WORLD_W + 50 || this.y < -50 || this.y > WORLD_H + 50) {
-      this.alive = false; return;
-    }
-    if (this.age > 10) this.alive = false;  // 10 seconds (was 600 ticks)
   }
+
   draw(ctx, alpha = 1) {
     const ix = this.prevX + (this.x - this.prevX) * alpha;
     const iy = this.prevY + (this.y - this.prevY) * alpha;
+    
+    // Draw trail
     for (let i = 0; i < this.trailCount; i++) {
       const idx = (this.trailHead - this.trailCount + i + 25) % 25;
       const t = i / this.trailCount;
       ctx.fillStyle = `rgba(255,${150 + 105 * t | 0},${50 * t | 0},${t * 0.7})`;
-      ctx.beginPath(); ctx.arc(this.trail[idx].x, this.trail[idx].y, 1 + t * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); 
+      ctx.arc(this.trail[idx].x, this.trail[idx].y, 1 + t * 2, 0, Math.PI * 2); 
+      ctx.fill();
     }
+    
+    // Draw projectile body
     ctx.fillStyle = '#feca57';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#ff6b35';
-    ctx.beginPath(); ctx.arc(ix, iy, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); 
+    ctx.arc(ix, iy, 3, 0, Math.PI * 2); 
+    ctx.fill();
     ctx.shadowBlur = 0;
   }
 }

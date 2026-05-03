@@ -23,6 +23,7 @@ import {
 } from './terrain/falling.js';
 import { Player } from './entities/player.js';
 import { Projectile } from './entities/projectile.js';
+import { BallisticProjectile } from './entities/weapons/ballistic.js';
 import { Particle } from './entities/particle.js';
 import { spawnEnemy } from './entities/enemy.js';
 import { installInput, pollInput } from './input.js';
@@ -41,7 +42,7 @@ function fire() {
   const a = state.aimAngle;
   const startX = p.x + Math.cos(a) * 18;
   const startY = p.y + Math.sin(a) * 18;
-  state.projectiles.push(new Projectile(startX, startY, Math.cos(a) * FIRE_POWER, Math.sin(a) * FIRE_POWER));
+  state.projectiles.push(new BallisticProjectile(startX, startY, Math.cos(a) * FIRE_POWER, Math.sin(a) * FIRE_POWER));
   p.shots++;
   p.vx -= Math.cos(a) * FIRE_POWER * FIRE_RECOIL;
   p.vy -= Math.sin(a) * FIRE_POWER * FIRE_RECOIL;
