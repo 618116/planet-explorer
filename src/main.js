@@ -22,10 +22,9 @@ import {
   getPendingFloat, clearPendingFloat,
 } from './terrain/falling.js';
 import { Player } from './entities/player.js';
-import { Projectile } from './entities/projectile.js';
 import { Particle } from './entities/particle.js';
 import { spawnEnemy } from './entities/enemy.js';
-import { WeaponFactory } from './entities/weaponFactory.js';
+import { createProjectile } from './entities/weaponFactory.js';
 import { installInput, pollInput } from './input.js';
 import { drawMinimap } from './minimap.js';
 
@@ -42,7 +41,7 @@ function fire() {
   const a = state.aimAngle;
   const startX = p.x + Math.cos(a) * 18;
   const startY = p.y + Math.sin(a) * 18;
-  state.projectiles.push(WeaponFactory.create('ballistic', { x: startX, y: startY, vx: Math.cos(a) * FIRE_POWER, vy: Math.sin(a) * FIRE_POWER }));
+  state.projectiles.push(createProjectile('ballistic', { x: startX, y: startY, vx: Math.cos(a) * FIRE_POWER, vy: Math.sin(a) * FIRE_POWER }));
   p.shots++;
   p.vx -= Math.cos(a) * FIRE_POWER * FIRE_RECOIL;
   p.vy -= Math.sin(a) * FIRE_POWER * FIRE_RECOIL;

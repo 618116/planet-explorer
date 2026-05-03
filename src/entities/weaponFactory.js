@@ -1,26 +1,23 @@
-// WeaponFactory: Centralized factory for creating different types of projectiles.
+// Centralized factory for creating projectile instances by weapon type.
 import { BallisticProjectile } from './weapons/ballistic.js';
 import { LaserProjectile } from './weapons/laser.js';
 
-export class WeaponFactory {
-  /**
-   * Creates a projectile based on the specified type.
-   * @param {string} type - The type of weapon to create.
-   * @param {Object} params - Parameters for the projectile (x, y, vx, vy, etc.).
-   * @returns {Projectile} A new projectile instance.
-   */
-  static create(type, params) {
-    const { x, y, vx, vy } = params;
+const WEAPON_TYPES = {
+  ballistic: BallisticProjectile,
+  laser: LaserProjectile,
+};
 
-    switch (type) {
-      case 'ballistic':
-        return new BallisticProjectile(x, y, vx, vy);
-      case 'laser':
-        return new LaserProjectile(x, y, vx, vy);
-      
-      default:
-        console.warn(`Unknown weapon type: ${type}. Falling back to ballistic.`);
-        return new BallisticProjectile(x, y, vx, vy);
-    }
+/**
+ * Creates a projectile of the given type.
+ * @param {string} type  - Key in WEAPON_TYPES (e.g. 'ballistic', 'laser').
+ * @param {Object} params - { x, y, vx, vy } spawn parameters.
+ * @returns {Projectile} A new projectile instance.
+ */
+export function createProjectile(type, params) {
+  const Ctor = WEAPON_TYPES[type];
+  if (!Ctor) {
+    console.warn(`Unknown weapon type: "${type}". Falling back to ballistic.`);
+    return new BallisticProjectile(params.x, params.y, params.vx, params.vy);
   }
+  return new Ctor(params.x, params.y, params.vx, params.vy);
 }

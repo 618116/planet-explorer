@@ -1,36 +1,49 @@
-// Laser projectile: moves in a straight line, no gravity.
+// Laser projectile: moves in a straight line with no gravity.
+// Collides with terrain on contact but does not explode.
 import { Projectile } from '../projectile.js';
+import { raycastTerrain } from '../../terrain/heightmap.js';
 
 export class LaserProjectile extends Projectile {
-  constructor(x, y, vx, vy) {
-    super(x, y, vx, vy);
-  }
-
   update(dt) {
     super.update(dt);
     if (!this.alive) return;
 
-    // No gravity for laser
+    // Straight-line movement (no gravity)
     const nx = this.x + this.vx;
     const ny = this.y + this.vy;
 
-    // Laser might still hit terrain
-    // We'll need a way to handle terrain collision for lasers if they aren't meant to pass through.
-    // For now, let's assume they hit terrain like ballistic ones but without gravity.
-    // We'll need to import raycastTerrain if we want to use it here.
-    // But wait, the base class doesn't have it. Let's see.
-    // Actually, the base class is just a container.
-    
-    // For a laser, we might want to check collision differently.
-    // But for this test, let's just use the same logic as ballistic but without gravity.
-    // We'll import it inside the update or at the top.
-    // Let's use a dynamic import or just add it to the top.
-    // Since we are in a module, we can just import it.
-    // But we need to avoid circular dependencies if possible.
-    // Let'// We'll use a trick: we'll import it here.
-    // Actually, let's just use the current position for now to see if it works.
-    
-    // For now, let's just move.
+    // Terrain collision — laser stops on impact, no explosion
+    const hit = raycastTerrain(this.x, this.y, nx, ny);
+    if (hit) {
+      this.updatePosition(hit.x, hit.y);
+      this.alive = false;
+      return;
+    }
+
     this.updatePosition(nx, ny);
+  }
+
+  draw(ctx, alpha = 1) {
+    const ix = this.prevX + (this.x - this.prevX) * alpha;
+    const iy = this.prevY + (this.y - this.prevY) * alpha;
+
+    // Draw laser trail — cyan beam effect
+    for (let i = 0; i < this.trailCount; i++) {
+      const idx = (this.trailHead - this.trailCount + i + this.trail.length) % this.trail.length;
+      const t = i / this.trailCount;
+      ctx.fillStyle = `rgba(0,${180 + 75 * t | 0},255,${t * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(this.trail[idx].x, this.trail[idx].y, 1 + t * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw laser body — bright cyan glow
+    ctx.fillStyle = '#00d2ff';
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#00d2ff';
+    ctx.beginPath();
+    ctx.arc(ix, iy, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 }
