@@ -79,7 +79,8 @@ export class LaserProjectile extends Projectile {
         hitX,
         hitY,
       );
-      const hitRadius = Math.max(LASER_HIT_WIDTH, e.isLarge ? e.sizeW * 0.5 : LASER_HIT_WIDTH);
+      const enemyHitRadius = e.hitRadius !== undefined ? e.hitRadius : e.sizeW * 0.5;
+      const hitRadius = Math.max(LASER_HIT_WIDTH, enemyHitRadius);
 
       if (segmentDist <= hitRadius && alongRay < nearestEnemyDist) {
         nearestEnemy = e;

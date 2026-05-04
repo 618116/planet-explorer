@@ -27,9 +27,10 @@ export function drawMinimap() {
   ctx.stroke();
 
   for (const e of state.enemies) {
-    ctx.fillStyle = e.isLarge ? '#228822' : '#44cc44';
+    ctx.fillStyle = e.minimapColor !== undefined ? e.minimapColor : (e.isLarge ? '#228822' : '#44cc44');
     ctx.beginPath();
-    ctx.arc(mx + e.x * scale, my + e.y * scale, e.isLarge ? 4 : 2, 0, Math.PI * 2);
+    const enemyRadius = e.minimapRadius !== undefined ? e.minimapRadius : (e.isLarge ? 4 : 2);
+    ctx.arc(mx + e.x * scale, my + e.y * scale, enemyRadius, 0, Math.PI * 2);
     ctx.fill();
   }
 

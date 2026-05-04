@@ -23,7 +23,7 @@ import {
 } from './terrain/falling.js';
 import { Player } from './entities/player.js';
 import { Particle } from './entities/particle.js';
-import { spawnEnemy } from './entities/enemy.js';
+import { spawnEnemy } from './entities/enemyFactory.js';
 import { createProjectile } from './entities/weaponFactory.js';
 import { installInput, pollInput } from './input.js';
 import { drawMinimap } from './minimap.js';
