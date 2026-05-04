@@ -32,6 +32,11 @@ export const THRUST_WEAKEN_END = WORLD_W * 0.48;
 export const GAME_TIME = 60;
 export const WIN_TERRAIN_PCT = 5;
 
+// Laser specific constants
+export const LASER_DAMAGE = 15;
+export const LASER_TERRAIN_RADIUS = 12;
+export const LASER_IMPACT_RADIUS = 18;
+
 // Damping factors (per-tick at REF_HZ; applied via Math.pow(f, dt*REF_HZ))
 export const GROUND_DAMPING = 0.82;
 export const AIR_DAMPING = 0.995;

@@ -2,21 +2,39 @@
 // Collides with terrain on contact but does not explode.
 import { Projectile } from '../projectile.js';
 import { raycastTerrain } from '../../terrain/heightmap.js';
+import { LASER_DAMAGE, LASER_TERRAIN_RADIUS, LASER_IMPACT_RADIUS } from '../../config.js';
+import { state } from '../../state.js';
+import { laserImpact } from '../../explode.js';
 
 export class LaserProjectile extends Projectile {
   update(dt) {
     super.update(dt);
     if (!this.alive) return;
 
-    // Straight-line movement (no gravity)
-    const nx = this.x + this.vx;
-    const ny = this.y + this.vy;
+    // 1. Check for enemy hits (Direct Damage)
+    for (const e of state.enemies) {
+      if (e.hp <= 0) continue;
+      const dist = Math.hypot(e.x - this.x, e.y - this.y);
+      // Check if the projectile is within a hit radius of the enemy
+      if (dist < (e.isLarge ? 20 : 10)) {
+        e.hp = Math.max(0, e.hp - LASER_DAMAGE);
+        this.alive = false;
+        return;
+      }
+    }
 
-    // Terrain collision — laser stops on impact, no explosion
+    // 2. Check for terrain collision (Destruction)
+    // Use the delta (movement) to check for hits along the path
+    const vx = this.vx;
+    const vy = this.vy;
+    const nx = this.x + vx;
+    const ny = this.y + vy;
+
     const hit = raycastTerrain(this.x, this.y, nx, ny);
     if (hit) {
       this.updatePosition(hit.x, hit.y);
       this.alive = false;
+      laserImpact(hit.x, hit.y);
       return;
     }
 

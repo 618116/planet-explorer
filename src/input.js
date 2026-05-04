@@ -1,6 +1,7 @@
 // Keyboard + mouse + gamepad + wheel. Per-frame snapshot consumed by main loop.
 import { VW, VH } from './config.js';
 import { canvas, godToggleEl } from './dom.js';
+import { state } from './state.js';
 import { adjustZoom } from './camera.js';
 
 const keys = {};
@@ -100,6 +101,14 @@ export function pollInput(camRot) {
   const aim = gpAimActive
     ? { active: true, angle: gpAimAngle, source: 'pad' }
     : { active: false, mouseX, mouseY, source: 'mouse' };
+
+  // Weapon switching
+  if (keys['1']) {
+    state.currentWeapon = 'ballistic';
+  }
+  if (keys['2']) {
+    state.currentWeapon = 'laser';
+  }
 
   return { walk, thrust, aim, fire };
 }

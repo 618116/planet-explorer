@@ -41,10 +41,26 @@ function fire() {
   const a = state.aimAngle;
   const startX = p.x + Math.cos(a) * 18;
   const startY = p.y + Math.sin(a) * 18;
-  state.projectiles.push(createProjectile('ballistic', { x: startX, y: startY, vx: Math.cos(a) * FIRE_POWER, vy: Math.sin(a) * FIRE_POWER }));
+
+  let weaponType = state.currentWeapon;
+  let power = FIRE_POWER;
+  let recoil = FIRE_RECOIL;
+
+  if (weaponType === 'laser') {
+    power = FIRE_POWER * 1.5; // Lasers are faster
+    recoil = 0.01; // Much less recoil
+  }
+
+  state.projectiles.push(createProjectile(weaponType, { 
+    x: startX, 
+    y: startY, 
+    vx: Math.cos(a) * power, 
+    vy: Math.sin(a) * power 
+  }));
+
   p.shots++;
-  p.vx -= Math.cos(a) * FIRE_POWER * FIRE_RECOIL;
-  p.vy -= Math.sin(a) * FIRE_POWER * FIRE_RECOIL;
+  p.vx -= Math.cos(a) * power * recoil;
+  p.vy -= Math.sin(a) * power * recoil;
   resolveSurfaceCollision(p);
 }
 
@@ -226,6 +242,10 @@ function render(alpha) {
   shotsLabel.textContent = player.shots;
   zoomLabel.textContent = camera.zoom.toFixed(1) + 'x';
   terrainLabel.textContent = getTerrainPct() + '%';
+  
+  // Add weapon info to shots label or a new place
+  const weaponName = state.currentWeapon === 'ballistic' ? 'BALLISTIC' : 'LASER';
+  shotsLabel.textContent = `${player.shots} [${weaponName}]`;
 
   ctx.clearRect(0, 0, VW, VH);
   ctx.fillStyle = '#030308';

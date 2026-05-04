@@ -16,4 +16,5 @@ export const state = {
   lastEnemySpawn: 0,
   lastFrameTime: performance.now(),
   fpsSmooth: 60,
+  currentWeapon: 'ballistic',
 };
