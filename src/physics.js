@@ -1,6 +1,11 @@
 // Shared physics helpers for entity movement on a radial planet.
 import { CX, CY } from './config.js';
 import { isSolid } from './terrain/heightmap.js';
+import { isFallingSolid } from './terrain/falling.js';
+
+export function isCollidableSolid(x, y) {
+  return isSolid(x, y) || isFallingSolid(x, y);
+}
 
 export function surfaceAngle(x, y) {
   return Math.atan2(y - CY, x - CX);
@@ -50,14 +55,14 @@ export function resolveSurfaceCollision(obj) {
   const θ = surfaceAngle(obj.x, obj.y);
   const outX = Math.cos(θ), outY = Math.sin(θ);
 
-  if (isSolid(obj.x, obj.y)) {
+  if (isCollidableSolid(obj.x, obj.y)) {
     const n = terrainNormal(Math.round(obj.x), Math.round(obj.y));
     const escX = n ? n.x : outX;
     const escY = n ? n.y : outY;
 
     for (let i = 0; i < 60; i++) {
       obj.x += escX; obj.y += escY;
-      if (!isSolid(obj.x, obj.y)) break;
+      if (!isCollidableSolid(obj.x, obj.y)) break;
     }
 
     // Cancel the velocity component going into the surface.
@@ -69,7 +74,7 @@ export function resolveSurfaceCollision(obj) {
   }
 
   // onGround: purely positional — is there solid terrain 2 px toward planet center?
-  obj.onGround = isSolid(
+  obj.onGround = isCollidableSolid(
     Math.round(obj.x - outX * 2),
     Math.round(obj.y - outY * 2),
   );
@@ -86,10 +91,10 @@ export function resolveBodyCollision(obj, halfW, bodyLen, step, outX, outY, onHi
   let t = 0;
   do {
     for (let side = -1; side <= 1; side += 2) {
-      if (isSolid(obj.x + outX * t + tx * halfW * side, obj.y + outY * t + ty * halfW * side)) {
+      if (isCollidableSolid(obj.x + outX * t + tx * halfW * side, obj.y + outY * t + ty * halfW * side)) {
         for (let push = 0; push < 8; push++) {
           obj.x -= tx * side * 0.5; obj.y -= ty * side * 0.5;
-          if (!isSolid(obj.x + outX * t + tx * halfW * side, obj.y + outY * t + ty * halfW * side)) break;
+          if (!isCollidableSolid(obj.x + outX * t + tx * halfW * side, obj.y + outY * t + ty * halfW * side)) break;
         }
         if (onHit) {
           onHit(obj, side, tx, ty);

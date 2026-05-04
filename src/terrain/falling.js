@@ -182,3 +182,24 @@ export function carveTerrain(cx, cy, radius) {
   floatState.pending = true;
   return removed;
 }
+
+// Collision query for active (not yet settled) falling chunks.
+// Returns true when world position (x, y) overlaps a solid chunk pixel.
+export function isFallingSolid(x, y) {
+  const wx = Math.round(x);
+  const wy = Math.round(y);
+
+  for (const c of fallingChunks) {
+    if (c.settled) continue;
+
+    const bx = Math.round(c.offsetX);
+    const by = Math.round(c.offsetY);
+    const lx = wx - (c.originX + bx);
+    const ly = wy - (c.originY + by);
+
+    if (lx < 0 || lx >= c.w || ly < 0 || ly >= c.h) continue;
+    if (c.grid[ly * c.w + lx]) return true;
+  }
+
+  return false;
+}

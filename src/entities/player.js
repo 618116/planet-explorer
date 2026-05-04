@@ -3,9 +3,9 @@ import {
   PLAYER_H, PLAYER_W, MAX_FUEL, FUEL_REGEN,
   REF_HZ, GROUND_DAMPING, AIR_DAMPING,
 } from '../config.js';
-import { gravityAt, getSurfaceRadius, isSolid } from '../terrain/heightmap.js';
+import { gravityAt, getSurfaceRadius } from '../terrain/heightmap.js';
 import {
-  surfaceAngle, placeAtAngle, resolveSurfaceCollision, resolveBodyCollision,
+  surfaceAngle, placeAtAngle, resolveSurfaceCollision, resolveBodyCollision, isCollidableSolid,
 } from '../physics.js';
 
 export class Player {
@@ -32,10 +32,10 @@ export class Player {
     const sub = Math.max(1, Math.ceil(speed));
     const halfW = PLAYER_W / 2;
     const bodyHits = (px, py, oX, oY, tX, tY) => {
-      if (isSolid(px, py)) return true;
+      if (isCollidableSolid(px, py)) return true;
       for (let t = 0; t <= PLAYER_H; t += 3) {
         for (let s = -1; s <= 1; s += 2) {
-          if (isSolid(px + oX * t + tX * halfW * s, py + oY * t + tY * halfW * s)) return true;
+          if (isCollidableSolid(px + oX * t + tX * halfW * s, py + oY * t + tY * halfW * s)) return true;
         }
       }
       return false;
