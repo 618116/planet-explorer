@@ -33,9 +33,12 @@ export const GAME_TIME = 60;
 export const WIN_TERRAIN_PCT = 5;
 
 // Laser specific constants
-export const LASER_DAMAGE = 15;
-export const LASER_TERRAIN_RADIUS = 12;
-export const LASER_IMPACT_RADIUS = 18;
+export const LASER_DAMAGE = 40;
+export const LASER_TERRAIN_RADIUS = 6;
+export const LASER_IMPACT_RADIUS = 8;
+export const LASER_RANGE = 1800;
+export const LASER_VISUAL_LIFE = 0.08;
+export const LASER_HIT_WIDTH = 8;
 
 // Damping factors (per-tick at REF_HZ; applied via Math.pow(f, dt*REF_HZ))
 export const GROUND_DAMPING = 0.82;

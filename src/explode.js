@@ -1,5 +1,5 @@
 // Explosion orchestrator: carve terrain, recompute %, knockback player/enemies, spawn particles, shake.
-import { EXPLOSION_RADIUS, PARTICLE_COUNT, LASER_TERRAIN_RADIUS, LASER_IMPACT_RADIUS, LASER_DAMAGE } from './config.js';
+import { EXPLOSION_RADIUS, PARTICLE_COUNT, LASER_TERRAIN_RADIUS, LASER_IMPACT_RADIUS } from './config.js';
 import { carveTerrain } from './terrain/falling.js';
 import { recalcTerrainPercent } from './terrain/heightmap.js';
 import { applyRadialKnockback } from './physics.js';
@@ -25,11 +25,11 @@ export function laserImpact(x, y) {
   const removed = carveTerrain(x, y, LASER_TERRAIN_RADIUS);
   recalcTerrainPercent(removed);
   
-  // Small damage/knockback for enemies
+  // Tiny knockback only. Hitscan laser direct hits own the damage role.
   const R = LASER_IMPACT_RADIUS;
   for (const e of state.enemies) {
     if (e.hp <= 0) continue;
-    applyRadialKnockback(e, x, y, R, 3, LASER_DAMAGE, false);
+    applyRadialKnockback(e, x, y, R, 1, 0, false);
   }
 
   // Laser particles
